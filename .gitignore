@@ -14,5 +14,9 @@ __pycache__/
 backups/
 uploads/
 
+# Personal marketing drafts, not project documentation
+linkedin.txt
+demo-video-script.md
+
 # OS
 .DS_Store

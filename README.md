@@ -1,20 +1,32 @@
 <div align="center">
 
-# ORBIT
+<img src="docs/media/banner.png" alt="ORBIT — the operating system for your company" width="100%" />
 
-**The operating system for your company.**
+<br />
 
-Projects · Tasks · Ideas · R&D · Knowledge · Approvals · Finance · CRM · People — connected in one operational graph.
+**A self-hosted company operating system.** Projects, tasks, ideas, R&D, knowledge,
+approvals, finance, customers, people and the company letter register —
+connected in one operational graph instead of nine disconnected tools.
+
+<br />
+
+![License](https://img.shields.io/badge/license-MIT-f4511e?style=flat-square)
+![Stack](https://img.shields.io/badge/FastAPI-Python%203.12-0d121e?style=flat-square)
+![Stack](https://img.shields.io/badge/Next.js%2015-React%2019-0d121e?style=flat-square)
+![Database](https://img.shields.io/badge/PostgreSQL%2016-pgvector-0d121e?style=flat-square)
+![i18n](https://img.shields.io/badge/English%20%C2%B7%20%D9%81%D8%A7%D8%B1%D8%B3%DB%8C-RTL%20native-0d121e?style=flat-square)
 
 </div>
 
 ---
 
-ORBIT is a self-hosted company operating system. It is not a bundle of unrelated
-apps behind one login: an idea becomes research, research becomes a project, a
-project contains tasks, a meeting produces decisions and action items, an
-expense belongs to a project and a budget, and every one of those links is a
-real, queryable edge in the **company graph**.
+## The idea
+
+Most companies run on eight tools that know nothing about each other. The task
+board cannot see the budget. The wiki cannot see the decision that made it
+obsolete. The CRM cannot see the project it sold.
+
+ORBIT stores the connections as real, queryable edges:
 
 ```
 Idea ──creates──▶ R&D ──creates──▶ Project ──contains──▶ Task ──assigned_to──▶ Person
@@ -29,9 +41,120 @@ Idea ──creates──▶ R&D ──creates──▶ Project ──contains─
                                                   Decision
 ```
 
+Open a project and you see the research that started it, the decisions that
+shaped it, the money it has spent, the letters it generated and the people it
+depends on — because those are edges in one graph, not links someone remembered
+to paste.
+
 ---
 
-## 1. Requirements
+## Quick start
+
+Docker is the only requirement.
+
+```bash
+git clone https://github.com/itsmadson/Orbit.git orbit && cd orbit
+cp .env.example .env
+docker compose up -d --build
+```
+
+Open **http://localhost:3000** and sign in as `admin@orbit.dev` / `orbit1234`.
+
+First boot builds both images, applies migrations and seeds a complete demo
+company — 14 people, 5 projects, 34 tasks, 10 ideas, 3 research projects with 9
+experiments, 7 months of finance, a CRM pipeline, assets, OKRs and a letter
+register. Nothing to click through; it is populated when it opens.
+
+---
+
+## What it looks like
+
+### Dashboard
+
+Company health, the money, and insights derived from live records — never
+invented.
+
+<img src="docs/media/dashboard.png" alt="ORBIT dashboard" width="100%" />
+
+### Tasks
+
+Kanban, list, backlog and personal views over the same data, with real
+drag-and-drop, dependencies and sprints.
+
+<img src="docs/media/tasks.png" alt="Task board" width="100%" />
+
+### Finance
+
+Money connected to the projects, customers, vendors and budgets that produced
+it — not a separate ledger.
+
+<img src="docs/media/finance.png" alt="Finance" width="100%" />
+
+### دبیرخانه — the letter register
+
+Persian-first office automation. Every letter takes a registered number from a
+formula the company owns, and prints as a PDF or exports as an editable DOCX.
+
+<img src="docs/media/letters-rtl.png" alt="Letter register in Persian" width="100%" />
+
+### Goals
+
+OKRs cascading from company to department to project, with progress rolled up
+from the key results.
+
+<img src="docs/media/goals.png" alt="Goals" width="100%" />
+
+### Orbit AI
+
+Answers from your actual records, filtered by what you are allowed to see — and
+says plainly when no language model is connected instead of inventing one.
+
+<img src="docs/media/ai.png" alt="Orbit AI" width="100%" />
+
+---
+
+## What is in the box
+
+| | |
+|---|---|
+| **Work** | Projects, tasks, sprints, milestones, dependencies, roadmaps |
+| **Innovation** | Idea pipeline with scoring and voting, brainstorm boards, R&D projects, experiments |
+| **Knowledge** | Wiki spaces, versioned documents, decision records, meetings with action items |
+| **Operations** | Data-driven approval workflows, the دبیرخانه letter register with PDF/DOCX export |
+| **Business** | Double-sided finance, budgets, invoices, CRM pipeline, contracts, procurement, assets |
+| **People** | Directory, departments, skills, leave, attendance, onboarding, OKRs |
+| **Across all of it** | One company graph, global search, universal inbox, comments, attachments, audit trail, RBAC, English/Persian with native RTL |
+
+---
+
+## Why it is built this way
+
+**A modular monolith, not microservices.** One API process with clean domain
+boundaries. Postgres is the single source of truth. You can run the whole
+company on one machine, and you can read the whole codebase.
+
+**The graph is generic.** `relations` stores typed edges between any registered
+entities, and one registry describes what an entity is. Adding a module means
+adding a row there — search, the graph explorer, comments, attachments and inbox
+links all work for it immediately.
+
+**Workflows are data, not code.** States, transitions and form schema live in
+JSONB and are interpreted at runtime, so a new approval chain is a POST rather
+than a deployment.
+
+**Authorization is enforced on the server.** Roles grant permissions, scoped
+grants layer on top, and every route declares what it needs. The frontend mirrors
+the rules only to hide buttons. Sign in as `dev@orbit.dev` and open `/finance` to
+watch it refuse.
+
+**Persian is structural, not a translation layer.** Locale is read on the server
+and sets `dir` on the document; the layout uses logical properties throughout, so
+Persian is a genuine mirror of the interface. The letter register numbers on the
+Jalali calendar and renders Persian text with real shaping and bidi.
+
+---
+
+## Requirements
 
 Only two things on the host:
 
@@ -47,16 +170,10 @@ Roughly 4 GB of free disk and 2 GB of RAM are enough for the demo workload.
 
 ---
 
-## 2. Installation
+## Where everything listens
 
-```bash
-git clone <your-fork> orbit && cd orbit
-cp .env.example .env
-docker compose up -d --build
-```
-
-First boot takes a few minutes (it builds both images, runs migrations and seeds
-a complete demo company). After that:
+First boot takes a few minutes: it builds both images, runs migrations and seeds
+the demo company. After that:
 
 | Service | URL |
 | --- | --- |
@@ -79,7 +196,7 @@ make health            # or hit both health endpoints directly
 
 ---
 
-## 3. Environment variables
+## Environment variables
 
 Everything lives in `.env` (copied from `.env.example`).
 
@@ -107,7 +224,7 @@ server-side proxy and tokens live in httpOnly cookies.
 
 ---
 
-## 4. Starting the application
+## Starting the application
 
 ```bash
 docker compose up -d          # start
@@ -131,7 +248,7 @@ make help      # list everything
 
 ---
 
-## 5. Database migrations
+## Database migrations
 
 Migrations are **Alembic** and run automatically on every API start
 (`docker/api-entrypoint.sh` → `alembic upgrade head`), so a fresh deployment
@@ -150,7 +267,7 @@ Every change after that is an ordinary hand-written or autogenerated revision.
 
 ---
 
-## 6. Demo credentials
+## Demo credentials
 
 The first boot seeds **Orbit Demo Company** — 14 people, 5 projects, ~35 tasks,
 10 ideas, 3 R&D projects with 9 experiments, 12 documents, 6 decisions, 8
@@ -178,7 +295,7 @@ the first `docker compose up`, then create your company via the API.
 
 ---
 
-## 7. Development mode
+## Development mode
 
 The default compose file runs production builds. For iterative work, run the
 service you are changing on the host and keep the rest in Docker.
@@ -215,7 +332,7 @@ docker compose exec orbit-api python -m app.seed # re-run the seed
 
 ---
 
-## 8. Production deployment
+## Production deployment
 
 1. **Set real secrets.** `SECRET_KEY=$(openssl rand -hex 32)`, a strong
    `POSTGRES_PASSWORD`, and `ENV=production`.
@@ -239,7 +356,7 @@ docker compose up -d --build   # deploy a new version (migrations run on start)
 
 ---
 
-## 9. Backup and restore
+## Backup and restore
 
 ```bash
 make backup                                  # → backups/orbit-<timestamp>.sql.gz
@@ -258,7 +375,7 @@ Uploaded files live in the `orbit-files` volume (or your S3 bucket when
 
 ---
 
-## 10. Architecture
+## Architecture
 
 ```
 orbit/
@@ -296,7 +413,7 @@ sessions.
 Radix primitives in the shadcn idiom, TanStack Query, Zustand, React Hook Form +
 Zod, Recharts, dnd-kit, TipTap, Lucide.
 
-### Design decisions worth knowing
+### The same decisions, with the file paths
 
 **A modular monolith, not microservices.** One API process, clean domain
 boundaries (`models/`, `services/`, `api/v1/` split by domain). Postgres is the
