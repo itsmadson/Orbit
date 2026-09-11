@@ -1,0 +1,27 @@
+{
+  "entities": [
+    { "key": "project", "label": "Project", "url": "/projects/{id}", "icon": "folder-kanban", "permission": "projects.read" },
+    { "key": "task", "label": "Task", "url": "/tasks/{id}", "icon": "check-square", "permission": "tasks.read" },
+    { "key": "idea", "label": "Idea", "url": "/ideas/{id}", "icon": "lightbulb", "permission": "ideas.read" },
+    { "key": "research", "label": "R&D", "url": "/rd/{id}", "icon": "flask-conical", "permission": "rd.read" },
+    { "key": "experiment", "label": "Experiment", "url": "/experiments/{id}", "icon": "atom", "permission": "rd.read" },
+    { "key": "document", "label": "Document", "url": "/documents/{id}", "icon": "file-text", "permission": "documents.read" },
+    { "key": "decision", "label": "Decision", "url": "/decisions/{id}", "icon": "gavel", "permission": "decisions.read" },
+    { "key": "meeting", "label": "Meeting", "url": "/meetings/{id}", "icon": "calendar", "permission": "meetings.read" },
+    { "key": "crm_company", "label": "Customer", "url": "/crm/{id}", "icon": "building-2", "permission": "crm.read" },
+    { "key": "deal", "label": "Deal", "url": "/crm/deals/{id}", "icon": "handshake", "permission": "crm.read" },
+    { "key": "contract", "label": "Contract", "url": "/crm/contracts/{id}", "icon": "file-signature", "permission": "crm.read" },
+    { "key": "invoice", "label": "Invoice", "url": "/finance/invoices/{id}", "icon": "receipt", "permission": "finance.read" },
+    { "key": "transaction", "label": "Transaction", "url": "/finance/transactions/{id}", "icon": "banknote", "permission": "finance.read" },
+    { "key": "asset", "label": "Asset", "url": "/assets/{id}", "icon": "laptop", "permission": "assets.read" },
+    { "key": "goal", "label": "Goal", "url": "/goals/{id}", "icon": "target", "permission": "goals.read" },
+    { "key": "request", "label": "Request", "url": "/approvals/{id}", "icon": "clipboard-list", "permission": "workflows.read" },
+    { "key": "brainstorm_board", "label": "Brainstorm", "url": "/brainstorm/{id}", "icon": "sparkles", "permission": "brainstorm.read" },
+    { "key": "user", "label": "Person", "url": "/employees/{id}", "icon": "user", "permission": "users.read" }
+  ],
+  "relationTypes": [
+    "relates_to", "creates", "contains", "assigned_to", "funded_by", "owns",
+    "generates", "blocks", "derived_from", "documents", "decides", "attends",
+    "delivers", "supersedes"
+  ]
+}

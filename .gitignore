@@ -1,0 +1,18 @@
+# Environment
+.env
+.env.local
+
+# Dependencies / build output
+node_modules/
+.next/
+*.tsbuildinfo
+__pycache__/
+*.pyc
+.venv/
+
+# Data
+backups/
+uploads/
+
+# OS
+.DS_Store

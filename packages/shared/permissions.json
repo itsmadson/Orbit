@@ -1,0 +1,14 @@
+{
+  "roles": [
+    "super_admin", "company_admin", "manager", "employee",
+    "finance", "hr", "rd", "project_manager", "viewer"
+  ],
+  "domains": [
+    "company", "users", "departments", "projects", "tasks", "ideas", "brainstorm",
+    "rd", "documents", "decisions", "meetings", "workflows", "approvals",
+    "finance", "hr", "crm", "assets", "procurement", "goals", "analytics",
+    "ai", "audit", "integrations", "settings"
+  ],
+  "actions": ["read", "write", "manage"],
+  "notes": "manage implies write implies read. Scoped grants (company / department / project / document / finance) are stored in the permission_grants table and merged on top of the role."
+}

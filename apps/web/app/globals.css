@@ -1,0 +1,379 @@
+@import "tailwindcss";
+
+/* ---------------------------------------------------------------------------
+   ORBIT design tokens
+
+   Deep navy-black ground, one hot vermillion accent, everything else quiet.
+   The accent is reserved for brand and interaction; status hues are separate
+   and always ship with a label, never colour alone.
+
+   Every text token here clears 4.5:1 on its own surface, and every categorical
+   chart step is validated for colour-vision separation (see chartPalette()).
+   Light mode is a real second theme, not an inversion.
+--------------------------------------------------------------------------- */
+
+@theme inline {
+  --color-bg: var(--bg);
+  --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
+  --color-elevated: var(--elevated);
+  --color-border: var(--border);
+  --color-border-strong: var(--border-strong);
+  --color-text: var(--text);
+  --color-muted: var(--muted);
+  --color-faint: var(--faint);
+  --color-accent: var(--accent);
+  --color-accent-solid: var(--accent-solid);
+  --color-accent-hot: var(--accent-hot);
+  --color-accent-soft: var(--accent-soft);
+  --color-accent-fg: var(--accent-fg);
+  --color-positive: var(--positive);
+  --color-warning: var(--warning);
+  --color-danger: var(--danger);
+  --color-info: var(--info);
+
+  --font-sans: var(--font-stack);
+  --font-mono: var(--font-mono-stack);
+
+  --radius-xs: 5px;
+  --radius-sm: 7px;
+  --radius-md: 9px;
+  --radius-lg: 13px;
+  --radius-xl: 18px;
+  --radius-2xl: 24px;
+}
+
+:root {
+  --font-stack: "Inter", "Vazirmatn", -apple-system, BlinkMacSystemFont, "Segoe UI",
+    system-ui, "Helvetica Neue", Arial, sans-serif;
+  --font-mono-stack: "JetBrains Mono", ui-monospace, SFMono-Regular, "SF Mono", Menlo,
+    monospace;
+
+  /* dark (default) */
+  --bg: #070a12;
+  --surface: #0d121e;
+  --surface-2: #121a29;
+  --elevated: #172133;
+  --border: #1d2839;
+  --border-strong: #2c3b52;
+  --text: #e8ecf5;
+  --muted: #949db5;
+  --faint: #626c84;
+
+  /* vermillion: --accent draws and writes, --accent-solid fills behind white */
+  --accent: #f4511e;
+  --accent-solid: #d43c0c;
+  --accent-hot: #ff7a45;
+  --accent-soft: color-mix(in oklab, var(--accent) 16%, transparent);
+  --accent-fg: #ffffff;
+
+  --positive: #2fd196;
+  --warning: #f7c948;
+  --danger: #f75c72;
+  --info: #4cc3ff;
+
+  --shadow-panel: 0 1px 0 0 #ffffff0a inset, 0 18px 40px -28px #000000e6;
+  --shadow-pop: 0 1px 0 0 #ffffff0f inset, 0 24px 48px -20px #000000f0;
+  --shadow-accent: 0 1px 0 0 #ffffff33 inset, 0 6px 16px -8px color-mix(in oklab, var(--accent) 65%, transparent);
+  --glow-warm: radial-gradient(
+    42rem 22rem at 0% 0%,
+    color-mix(in oklab, var(--accent) 13%, transparent),
+    transparent 62%
+  );
+  color-scheme: dark;
+}
+
+:root[data-theme="light"] {
+  --bg: #f4f4f6;
+  --surface: #ffffff;
+  --surface-2: #f7f7f9;
+  --elevated: #ffffff;
+  --border: #e5e5ea;
+  --border-strong: #cfd0d8;
+  --text: #131722;
+  --muted: #5a6272;
+  --faint: #878e9e;
+
+  --accent: #d44212;
+  --accent-solid: #d43c0c;
+  --accent-hot: #b83507;
+  --accent-soft: color-mix(in oklab, var(--accent) 11%, transparent);
+  --accent-fg: #ffffff;
+
+  --positive: #0e7a55;
+  --warning: #9a6400;
+  --danger: #d1293d;
+  --info: #0071cb;
+
+  --shadow-panel: 0 1px 2px 0 #10182812, 0 10px 24px -18px #10182833;
+  --shadow-pop: 0 2px 4px 0 #1018280f, 0 20px 40px -16px #10182826;
+  --shadow-accent: 0 1px 0 0 #ffffff40 inset, 0 6px 14px -8px color-mix(in oklab, var(--accent) 55%, transparent);
+  --glow-warm: radial-gradient(
+    42rem 22rem at 0% 0%,
+    color-mix(in oklab, var(--accent) 7%, transparent),
+    transparent 62%
+  );
+  color-scheme: light;
+}
+
+* {
+  border-color: var(--border);
+}
+
+html,
+body {
+  height: 100%;
+}
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-stack);
+  font-size: 13.5px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+/* Persian typography: slightly larger, looser line height for legibility. */
+html[lang="fa"] body {
+  font-size: 14.5px;
+  line-height: 1.75;
+  letter-spacing: 0;
+}
+
+/* ---------------------------------------------------------------------------
+   Browser surfaces we did not draw but still own.
+--------------------------------------------------------------------------- */
+
+::selection {
+  background: color-mix(in oklab, var(--accent) 32%, transparent);
+  color: var(--text);
+}
+
+input,
+textarea,
+[contenteditable] {
+  caret-color: var(--accent);
+}
+
+::placeholder {
+  color: var(--muted);
+  opacity: 1;
+}
+
+:focus-visible {
+  outline: 2px solid color-mix(in oklab, var(--accent) 70%, transparent);
+  outline-offset: 2px;
+  border-radius: var(--radius-xs);
+}
+
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--border-strong);
+  border-radius: 999px;
+  border: 3px solid var(--bg);
+}
+::-webkit-scrollbar-thumb:hover {
+  background: color-mix(in oklab, var(--accent) 55%, var(--border-strong));
+}
+* {
+  scrollbar-color: var(--border-strong) transparent;
+}
+
+/* ---------------------------------------------------------------------------
+   Materials
+--------------------------------------------------------------------------- */
+
+@layer utilities {
+  .panel {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+  }
+  .panel-elevated {
+    background: var(--elevated);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-panel);
+  }
+  /* A hero panel: the same material, lit from one corner. */
+  .panel-glow {
+    position: relative;
+    background:
+      var(--glow-warm),
+      var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-xl);
+    box-shadow: var(--shadow-panel);
+  }
+  .glow-warm {
+    background-image: var(--glow-warm);
+  }
+  .glass {
+    background: color-mix(in oklab, var(--surface) 80%, transparent);
+    backdrop-filter: blur(14px) saturate(140%);
+    -webkit-backdrop-filter: blur(14px) saturate(140%);
+  }
+  /* Solid accent icon tile — the recurring mark of the system. */
+  .tile {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: var(--radius-md);
+    background: linear-gradient(
+      160deg,
+      var(--accent-hot) 0%,
+      var(--accent) 45%,
+      var(--accent-solid) 100%
+    );
+    color: #fff;
+    box-shadow: var(--shadow-accent);
+  }
+  .tile-soft {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: var(--radius-md);
+    background: var(--accent-soft);
+    color: var(--accent);
+    border: 1px solid color-mix(in oklab, var(--accent) 24%, transparent);
+  }
+  /* Numerals that sit still while values update. */
+  .tnum {
+    font-variant-numeric: tabular-nums;
+    font-feature-settings: "tnum" 1;
+  }
+  .hairline {
+    border-color: var(--border);
+  }
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+  .no-scrollbar {
+    scrollbar-width: none;
+  }
+  .animate-in-up {
+    animation: orbit-in-up 0.28s cubic-bezier(0.16, 1, 0.3, 1) both;
+  }
+  .animate-fade {
+    animation: orbit-fade 0.2s ease both;
+  }
+}
+
+@keyframes orbit-in-up {
+  from {
+    opacity: 0;
+    transform: translateY(7px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes orbit-fade {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-in-up,
+  .animate-fade {
+    animation: none;
+  }
+  * {
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* Logical properties keep the layout correct in RTL without per-page overrides. */
+[dir="rtl"] .flip-x {
+  transform: scaleX(-1);
+}
+
+.tiptap:focus {
+  outline: none;
+}
+.tiptap p {
+  margin: 0.5em 0;
+}
+.tiptap h1 {
+  font-size: 1.6em;
+  font-weight: 650;
+  margin: 0.8em 0 0.4em;
+}
+.tiptap h2 {
+  font-size: 1.3em;
+  font-weight: 650;
+  margin: 0.8em 0 0.35em;
+}
+.tiptap h3 {
+  font-size: 1.1em;
+  font-weight: 650;
+  margin: 0.7em 0 0.3em;
+}
+.tiptap ul,
+.tiptap ol {
+  padding-inline-start: 1.4em;
+  margin: 0.5em 0;
+}
+.tiptap ul {
+  list-style: disc;
+}
+.tiptap ol {
+  list-style: decimal;
+}
+.tiptap code {
+  background: var(--surface-2);
+  padding: 0.1em 0.35em;
+  border-radius: 4px;
+  font-family: var(--font-mono-stack);
+  font-size: 0.9em;
+}
+.tiptap pre {
+  background: var(--surface-2);
+  padding: 0.8em 1em;
+  border-radius: 8px;
+  overflow-x: auto;
+  border: 1px solid var(--border);
+}
+.tiptap blockquote {
+  border-inline-start: 1px solid var(--border-strong);
+  padding-inline-start: 1.1em;
+  color: var(--muted);
+  font-style: italic;
+}
+
+.prose-orbit :where(h1, h2, h3) {
+  font-weight: 620;
+  margin: 1.2em 0 0.5em;
+}
+.prose-orbit :where(h1) { font-size: 1.5em; }
+.prose-orbit :where(h2) { font-size: 1.25em; }
+.prose-orbit :where(h3) { font-size: 1.05em; }
+.prose-orbit :where(p) { margin: 0.65em 0; }
+.prose-orbit :where(ul) { list-style: disc; padding-inline-start: 1.4em; margin: 0.6em 0; }
+.prose-orbit :where(ol) { list-style: decimal; padding-inline-start: 1.4em; margin: 0.6em 0; }
+.prose-orbit :where(a) {
+  color: var(--accent);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  text-decoration-thickness: 1px;
+}
+.prose-orbit :where(code) {
+  background: var(--surface-2);
+  padding: 0.1em 0.35em;
+  border-radius: 4px;
+  font-family: var(--font-mono-stack);
+}
