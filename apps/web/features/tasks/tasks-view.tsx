@@ -14,6 +14,7 @@ import { Button } from "@/components/ui/button";
 import { SimpleSelect } from "@/components/ui/select";
 import { TaskBoard } from "@/features/tasks/task-board";
 import { TaskTable } from "@/features/tasks/task-list";
+import { ViewBar } from "@/components/shared/view-bar";
 import { TaskDialog } from "@/features/tasks/task-form";
 import { useProjects } from "@/components/shared/pickers";
 import { humanize } from "@/lib/utils";
@@ -32,6 +33,18 @@ export function TasksView() {
   const projects = useProjects();
 
   const overdue = params.get("overdue") === "true";
+
+  // The filter state a saved view reads and writes back.
+  const viewFilters = React.useMemo(
+    () => ({ q: search, project_id: projectId, priority }),
+    [search, projectId, priority],
+  );
+  const applyView = React.useCallback((next: Record<string, unknown>) => {
+    setQuery((next.q as string) ?? "");
+    setProjectId((next.project_id as string) ?? "");
+    setPriority((next.priority as string) || undefined);
+    setPage(1);
+  }, []);
 
   const listQuery = useList<Task>("/tasks", {
     q: search,
@@ -114,6 +127,7 @@ export function TasksView() {
         </TabsContent>
         <TabsContent value="list">
           {filters}
+          <ViewBar entity="task" filters={viewFilters} onApply={applyView} />
           <TaskTable data={listQuery.data} loading={listQuery.isLoading} onPage={setPage} />
         </TabsContent>
         <TabsContent value="mine">

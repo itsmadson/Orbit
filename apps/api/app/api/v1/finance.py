@@ -1,5 +1,6 @@
 import uuid
 from datetime import UTC, date, datetime, timedelta
+from calendar import monthrange
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, Query
@@ -9,11 +10,13 @@ from app.api.helpers import get_or_404, user_ref
 from app.core.deps import DbSession, require
 from app.core.pagination import Paging, as_page
 from app.models.business import (
+    RecurringTransaction,
     Budget, CrmCompany, FinanceAccount, FinanceCategory, Invoice, Transaction, Vendor,
 )
 from app.models.identity import User
 from app.models.work import Project
 from app.schemas.business import (
+    RecurringIn, RecurringUpdate,
     AccountIn, AccountOut, BudgetIn, BudgetOut, CategoryIn, CategoryOut, FinanceSummary,
     InvoiceIn, InvoiceOut, InvoiceUpdate, TransactionIn, TransactionOut, TransactionUpdate,
     VendorIn, VendorOut,
@@ -414,3 +417,137 @@ def create_budget(payload: BudgetIn, db: DbSession,
         "department_id": budget.department_id, "category_id": budget.category_id,
         "spent": 0.0, "remaining": amount, "utilisation": 0,
     }
+
+
+# --------------------------------------------------------- recurring money
+def advance(current: date, cadence: str, day_of_month: int) -> date:
+    """The next occurrence after `current`, clamped to real calendar days."""
+    if cadence == "weekly":
+        return current + timedelta(days=7)
+    months = {"monthly": 1, "quarterly": 3, "yearly": 12}.get(cadence, 1)
+    month = current.month - 1 + months
+    year = current.year + month // 12
+    month = month % 12 + 1
+    day = min(day_of_month or current.day, monthrange(year, month)[1])
+    return date(year, month, day)
+
+
+def recurring_out(db, row: RecurringTransaction) -> dict:
+    return {
+        "id": row.id, "name": row.name, "kind": row.kind, "amount": float(row.amount),
+        "currency": row.currency, "cadence": row.cadence, "day_of_month": row.day_of_month,
+        "starts_on": row.starts_on, "ends_on": row.ends_on, "next_run": row.next_run,
+        "is_active": row.is_active, "description": row.description,
+        "account_id": row.account_id, "category_id": row.category_id,
+        "project_id": row.project_id, "vendor_id": row.vendor_id,
+        "customer_id": row.customer_id,
+        "last_posted_on": row.last_posted_on, "posted_count": row.posted_count,
+        "is_due": row.is_active and row.next_run <= date.today(),
+        "category": (
+            {"id": c.id, "name": c.name, "color": c.color}
+            if (c := db.get(FinanceCategory, row.category_id)) else None
+        ),
+    }
+
+
+@router.get("/recurring")
+def list_recurring(db: DbSession, user: Annotated[User, Depends(require("finance.read"))],
+                   only_due: bool = False):
+    stmt = select(RecurringTransaction).where(
+        RecurringTransaction.company_id == user.company_id,
+        RecurringTransaction.deleted_at.is_(None),
+    )
+    if only_due:
+        stmt = stmt.where(RecurringTransaction.is_active.is_(True),
+                          RecurringTransaction.next_run <= date.today())
+    rows = db.scalars(stmt.order_by(RecurringTransaction.next_run)).all()
+    due = [r for r in rows if r.is_active and r.next_run <= date.today()]
+    return {
+        "items": [recurring_out(db, row) for row in rows],
+        "due_count": len(due),
+        "due_total": round(sum(float(r.amount) for r in due), 2),
+    }
+
+
+@router.post("/recurring", status_code=201)
+def create_recurring(payload: RecurringIn, db: DbSession,
+                     user: Annotated[User, Depends(require("finance.write"))]):
+    data = payload.model_dump()
+    # model_dump() carries next_run=None explicitly, so setdefault never fires.
+    data["next_run"] = data.get("next_run") or data["starts_on"]
+    row = RecurringTransaction(company_id=user.company_id, **data)
+    db.add(row)
+    db.flush()
+    audit.record(db, actor=user, action="created", entity_type="recurring_transaction",
+                 entity_id=row.id, summary=f"Recurring {row.kind}: {row.name}")
+    return recurring_out(db, row)
+
+
+@router.patch("/recurring/{recurring_id}")
+def update_recurring(recurring_id: uuid.UUID, payload: RecurringUpdate, db: DbSession,
+                     user: Annotated[User, Depends(require("finance.write"))]):
+    row = get_or_404(db, RecurringTransaction, recurring_id, user.company_id, "Schedule")
+    for key, value in payload.model_dump(exclude_unset=True).items():
+        setattr(row, key, value)
+    db.flush()
+    return recurring_out(db, row)
+
+
+@router.delete("/recurring/{recurring_id}", response_model=Message)
+def delete_recurring(recurring_id: uuid.UUID, db: DbSession,
+                     user: Annotated[User, Depends(require("finance.write"))]):
+    row = get_or_404(db, RecurringTransaction, recurring_id, user.company_id, "Schedule")
+    row.deleted_at = datetime.now(UTC)
+    return Message(message="Schedule removed")
+
+
+@router.post("/recurring/post")
+def post_due(db: DbSession, user: Annotated[User, Depends(require("finance.write"))],
+             recurring_id: uuid.UUID | None = None, through: date | None = None):
+    """Write the transactions a schedule owes, up to today.
+
+    Posting is deliberate rather than automatic: a schedule that quietly writes
+    rows while nobody is looking is how a ledger stops being trusted. Catching
+    up a schedule that has been idle for months produces one row per missed
+    period, not a single lump.
+    """
+    through = through or date.today()
+    stmt = select(RecurringTransaction).where(
+        RecurringTransaction.company_id == user.company_id,
+        RecurringTransaction.deleted_at.is_(None),
+        RecurringTransaction.is_active.is_(True),
+        RecurringTransaction.next_run <= through,
+    )
+    if recurring_id:
+        stmt = stmt.where(RecurringTransaction.id == recurring_id)
+
+    created, total = [], 0.0
+    for schedule in db.scalars(stmt).all():
+        guard = 0
+        while schedule.next_run <= through and guard < 60:
+            if schedule.ends_on and schedule.next_run > schedule.ends_on:
+                schedule.is_active = False
+                break
+            transaction = Transaction(
+                company_id=user.company_id, kind=schedule.kind,
+                description=schedule.description or schedule.name,
+                amount=schedule.amount, currency=schedule.currency,
+                occurred_on=schedule.next_run, status="posted",
+                account_id=schedule.account_id, category_id=schedule.category_id,
+                project_id=schedule.project_id, vendor_id=schedule.vendor_id,
+                customer_id=schedule.customer_id, created_by_id=user.id,
+            )
+            db.add(transaction)
+            created.append({"name": schedule.name, "on": schedule.next_run,
+                            "amount": float(schedule.amount)})
+            total += float(schedule.amount)
+            schedule.last_posted_on = schedule.next_run
+            schedule.posted_count += 1
+            schedule.next_run = advance(schedule.next_run, schedule.cadence,
+                                        schedule.day_of_month)
+            guard += 1
+    db.flush()
+    if created:
+        audit.record(db, actor=user, action="created", entity_type="transaction",
+                     summary=f"Posted {len(created)} recurring transactions")
+    return {"posted": len(created), "total": round(total, 2), "items": created}

@@ -1,5 +1,5 @@
 import uuid
-from datetime import UTC, datetime
+from datetime import UTC, date, datetime, timedelta
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, Query
@@ -11,6 +11,7 @@ from app.core.pagination import Paging, as_page
 from app.models.business import Contact, Contract, CrmActivity, CrmCompany, Deal, Invoice
 from app.models.identity import User
 from app.schemas.business import (
+    NextStepIn,
     ContactIn, ContactOut, ContractIn, ContractOut, CrmActivityIn, CrmActivityOut,
     CrmCompanyIn, CrmCompanyOut, DealIn, DealOut, DealUpdate,
 )
@@ -300,3 +301,87 @@ def delete_company(company_id: uuid.UUID, db: DbSession,
     account = get_or_404(db, CrmCompany, company_id, user.company_id, "Customer")
     account.deleted_at = datetime.now(UTC)
     return Message(message="Customer removed")
+
+
+@router.get("/followups")
+def followups(db: DbSession, user: Annotated[User, Depends(require("crm.read"))],
+              mine: bool = True, horizon_days: int = 7):
+    """The pipeline's actual to-do list.
+
+    Three buckets a salesperson checks each morning: what is overdue, what is
+    due soon, and — the one that quietly loses deals — which open deals have no
+    agreed next step at all.
+    """
+    today = date.today()
+    horizon = today + timedelta(days=horizon_days)
+    base = select(Deal).where(
+        Deal.company_id == user.company_id,
+        Deal.deleted_at.is_(None),
+        Deal.stage.notin_(["won", "lost"]),
+    )
+    if mine:
+        base = base.where(Deal.owner_id == user.id)
+
+    def serialize(rows):
+        return [
+            {
+                "id": row.id, "title": row.title, "stage": row.stage,
+                "value": float(row.value), "currency": row.currency,
+                "next_step": row.next_step, "next_step_due": row.next_step_due,
+                "expected_close": row.expected_close,
+                "last_activity_at": row.last_activity_at,
+                "company": (
+                    {"id": c.id, "name": c.name}
+                    if (c := db.get(CrmCompany, row.crm_company_id)) else None
+                ),
+                "owner": user_ref(db.get(User, row.owner_id)) if row.owner_id else None,
+                "days_overdue": (today - row.next_step_due).days if row.next_step_due else None,
+            }
+            for row in rows
+        ]
+
+    overdue = db.scalars(
+        base.where(Deal.next_step_due.is_not(None), Deal.next_step_due < today)
+        .order_by(Deal.next_step_due)
+    ).all()
+    upcoming = db.scalars(
+        base.where(Deal.next_step_due.is_not(None), Deal.next_step_due >= today,
+                   Deal.next_step_due <= horizon).order_by(Deal.next_step_due)
+    ).all()
+    unscheduled = db.scalars(
+        base.where(Deal.next_step_due.is_(None)).order_by(Deal.value.desc())
+    ).all()
+
+    return {
+        "overdue": serialize(overdue),
+        "upcoming": serialize(upcoming),
+        "unscheduled": serialize(unscheduled),
+        "counts": {
+            "overdue": len(overdue), "upcoming": len(upcoming),
+            "unscheduled": len(unscheduled),
+        },
+    }
+
+
+@router.post("/deals/{deal_id}/next-step")
+def set_next_step(deal_id: uuid.UUID, payload: NextStepIn, db: DbSession,
+                  user: Annotated[User, Depends(require("crm.write"))]):
+    """Agree the next move on a deal, and log it as activity in one action."""
+    deal = get_or_404(db, Deal, deal_id, user.company_id, "Deal")
+    deal.next_step = payload.next_step
+    deal.next_step_due = payload.due_on
+    deal.last_activity_at = datetime.now(UTC)
+    if payload.log_activity:
+        db.add(CrmActivity(
+            company_id=user.company_id, crm_company_id=deal.crm_company_id, deal_id=deal.id,
+            type=payload.activity_type or "note",
+            subject=payload.activity_subject or f"Next step: {payload.next_step}",
+            body=payload.activity_body, occurred_at=datetime.now(UTC), user_id=user.id,
+        ))
+    db.flush()
+    audit.record(db, actor=user, action="updated", entity_type="deal", entity_id=deal.id,
+                 summary=f"Next step on {deal.title}: {payload.next_step}")
+    return {
+        "id": deal.id, "next_step": deal.next_step, "next_step_due": deal.next_step_due,
+        "last_activity_at": deal.last_activity_at,
+    }

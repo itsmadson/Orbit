@@ -1,7 +1,10 @@
 import uuid
 from datetime import datetime
 
-from sqlalchemy import BigInteger, DateTime, ForeignKey, Index, String, Text, UniqueConstraint
+from sqlalchemy import (
+    BigInteger, Boolean, DateTime, ForeignKey, Index, Integer, String, Text,
+    UniqueConstraint,
+)
 from sqlalchemy.dialects.postgresql import JSONB, UUID as PGUUID
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -156,3 +159,31 @@ class AiConversation(OrbitBase):
     title: Mapped[str] = mapped_column(String(240), default="New conversation")
     messages: Mapped[list] = mapped_column(JSONB, default=list)
     # [{role, content, sources: [{type,id,label}], at}]
+
+
+class SavedView(OrbitBase):
+    """A named set of filters someone actually reuses.
+
+    Every list in the workspace is really a query, and people run the same three
+    or four queries all week ("my open bugs", "this sprint's blockers"). Storing
+    them turns a filter bar into a workspace.
+    """
+
+    __tablename__ = "saved_views"
+    __table_args__ = (Index("ix_saved_views_entity", "company_id", "entity"),)
+
+    company_id: Mapped[uuid.UUID] = mapped_column(
+        PGUUID(as_uuid=True), ForeignKey("companies.id", ondelete="CASCADE"), index=True
+    )
+    owner_id: Mapped[uuid.UUID] = mapped_column(
+        PGUUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), index=True
+    )
+    entity: Mapped[str] = mapped_column(String(40), nullable=False)   # "task", "deal", …
+    name: Mapped[str] = mapped_column(String(120), nullable=False)
+    filters: Mapped[dict] = mapped_column(JSONB, default=dict)
+    #: Shared views appear for the whole company; private ones only for the owner.
+    is_shared: Mapped[bool] = mapped_column(Boolean, default=False)
+    is_default: Mapped[bool] = mapped_column(Boolean, default=False)
+    icon: Mapped[str | None] = mapped_column(String(40))
+    order_index: Mapped[int] = mapped_column(Integer, default=0)
+    use_count: Mapped[int] = mapped_column(Integer, default=0)

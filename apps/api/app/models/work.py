@@ -152,3 +152,31 @@ class TaskDependency(OrbitBase):
         PGUUID(as_uuid=True), ForeignKey("tasks.id", ondelete="CASCADE"), index=True
     )
     type: Mapped[str] = mapped_column(String(24), default="blocks")
+
+
+class ProjectCheckin(OrbitBase):
+    """A dated status note from whoever runs the project.
+
+    A health field on its own says a project is at risk but never why, or since
+    when. A check-in gives the status a date, an author and a story, so the
+    trend is readable months later.
+    """
+
+    __tablename__ = "project_checkins"
+
+    company_id: Mapped[uuid.UUID] = mapped_column(
+        PGUUID(as_uuid=True), ForeignKey("companies.id", ondelete="CASCADE"), index=True
+    )
+    project_id: Mapped[uuid.UUID] = mapped_column(
+        PGUUID(as_uuid=True), ForeignKey("projects.id", ondelete="CASCADE"), index=True
+    )
+    author_id: Mapped[uuid.UUID | None] = mapped_column(
+        PGUUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL")
+    )
+    health: Mapped[str] = mapped_column(String(20), default="on_track")
+    summary: Mapped[str] = mapped_column(Text, nullable=False)
+    progress: Mapped[int | None] = mapped_column(Integer)
+    highlights: Mapped[str | None] = mapped_column(Text)
+    risks: Mapped[str | None] = mapped_column(Text)
+    next_steps: Mapped[str | None] = mapped_column(Text)
+    period_end: Mapped[date] = mapped_column(Date, default=date.today)

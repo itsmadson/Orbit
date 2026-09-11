@@ -1,7 +1,7 @@
 import uuid
 from datetime import date, datetime
 
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict, Field
 
 from app.schemas.common import ORMModel, UserRef
 
@@ -184,3 +184,19 @@ class GoalOut(ORMModel):
     key_results: list[KeyResultOut] = []
     child_count: int = 0
     created_at: datetime
+
+
+class LeavePolicyIn(BaseModel):
+    annual_days: float | None = Field(default=None, ge=0, le=365)
+    max_carryover: float | None = Field(default=None, ge=0, le=365)
+    accrues_monthly: bool | None = None
+    requires_approval: bool | None = None
+    is_paid: bool | None = None
+
+
+class LeaveAdjustmentIn(BaseModel):
+    user_id: uuid.UUID
+    leave_type: str = "vacation"
+    year: int
+    days: float
+    reason: str | None = Field(default=None, max_length=300)

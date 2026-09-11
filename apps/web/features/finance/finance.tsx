@@ -17,6 +17,7 @@ import { MetricCard, PageHeader, Section } from "@/components/shared/page";
 import { Column, DataTable, FilterChips, Pagination, SearchInput, Toolbar } from "@/components/shared/data";
 import { Badge, EmptyState, Progress, StatusBadge, Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/misc";
 import { Button } from "@/components/ui/button";
+import { RecurringPanel } from "@/features/finance/recurring";
 import { Dialog, DialogContent, DialogFooter, DialogHeader } from "@/components/ui/dialog";
 import { Field, Input } from "@/components/ui/input";
 import { SimpleSelect } from "@/components/ui/select";
@@ -247,6 +248,9 @@ export function FinanceView() {
         </TabsContent>
 
         <TabsContent value="transactions">
+          <div className="mb-4">
+            <RecurringPanel />
+          </div>
           <TransactionsTable />
         </TabsContent>
 

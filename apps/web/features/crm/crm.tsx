@@ -13,6 +13,7 @@ import { Column, DataTable, FilterChips, SearchInput, Toolbar } from "@/componen
 import { DetailRow, LoadingPanel, RelatedPanel } from "@/components/shared/entity";
 import { Avatar, Badge, EmptyState, Progress, StatusBadge, Tabs, TabsContent, TabsList, TabsTrigger, TimeAgo } from "@/components/ui/misc";
 import { Button } from "@/components/ui/button";
+import { Followups } from "@/features/crm/followups";
 import { Dialog, DialogContent, DialogFooter, DialogHeader } from "@/components/ui/dialog";
 import { Field, Input, Textarea } from "@/components/ui/input";
 import { SimpleSelect } from "@/components/ui/select";
@@ -166,10 +167,15 @@ export function CrmView() {
 
       <Tabs defaultValue="pipeline">
         <TabsList className="mb-4">
+          <TabsTrigger value="followups">{t("crm.followups")}</TabsTrigger>
           <TabsTrigger value="pipeline">{t("crm.pipeline")}</TabsTrigger>
           <TabsTrigger value="companies">{t("crm.companies")}</TabsTrigger>
           <TabsTrigger value="contracts">{t("crm.contracts")}</TabsTrigger>
         </TabsList>
+
+        <TabsContent value="followups">
+          <Followups />
+        </TabsContent>
 
         <TabsContent value="pipeline">
           <div className="no-scrollbar flex gap-3 overflow-x-auto pb-3">

@@ -1,7 +1,7 @@
 import uuid
 from datetime import date, datetime
 
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict, Field
 
 from app.schemas.common import ORMModel, UserRef
 
@@ -249,3 +249,15 @@ class TaskBulkIn(BaseModel):
     due_date: date | None = None
     labels_add: list[str] | None = None
     labels_remove: list[str] | None = None
+
+
+class CheckinIn(BaseModel):
+    """A dated status note. Summary is required; the rest is what you have time for."""
+
+    health: str = "on_track"
+    summary: str = Field(min_length=1)
+    progress: int | None = Field(default=None, ge=0, le=100)
+    highlights: str | None = None
+    risks: str | None = None
+    next_steps: str | None = None
+    period_end: date | None = None

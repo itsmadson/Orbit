@@ -22,6 +22,7 @@ import { Field, Input } from "@/components/ui/input";
 import { SimpleSelect } from "@/components/ui/select";
 import { UserPicker } from "@/components/shared/pickers";
 import { RolePicker } from "@/components/shared/role-picker";
+import { LeaveBalance } from "@/features/people/leave-balance";
 import { useConfirm } from "@/components/ui/confirm";
 import { cn, formatCurrency, formatDate, humanize, relativeTime } from "@/lib/utils";
 
@@ -684,6 +685,8 @@ export function HrView() {
       ) : null}
 
       <div className="grid gap-4 lg:grid-cols-3">
+        <LeaveBalance />
+
         <Section title={t("hr.leave")} className="lg:col-span-2" contentClassName="p-0">
           <ul>
             {(leave.data?.items ?? []).map((request: any) => (

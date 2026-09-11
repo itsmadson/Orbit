@@ -19,6 +19,7 @@ import { Button } from "@/components/ui/button";
 import { SimpleSelect } from "@/components/ui/select";
 import { TaskBoard } from "@/features/tasks/task-board";
 import { TaskTable } from "@/features/tasks/task-list";
+import { ProjectCheckins } from "@/features/projects/checkins";
 import { TaskDialog } from "@/features/tasks/task-form";
 import { UserPicker } from "@/components/shared/pickers";
 import { cn, formatCurrency, formatDate, formatNumber, humanize, isOverdue } from "@/lib/utils";
@@ -182,6 +183,7 @@ export function ProjectDetailView({ projectId }: { projectId: string }) {
         <TabsContent value="overview">
           <div className="grid gap-4 lg:grid-cols-3">
             <div className="space-y-4 lg:col-span-2">
+              <ProjectCheckins projectId={projectId} />
               <Section title={t("projects.milestones")} contentClassName="p-0">
                 {project.milestones.length ? (
                   <ul>

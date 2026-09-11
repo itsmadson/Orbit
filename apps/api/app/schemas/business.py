@@ -1,7 +1,7 @@
 import uuid
 from datetime import date, datetime
 
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict, Field
 
 from app.schemas.common import ORMModel, UserRef
 
@@ -432,3 +432,47 @@ class PurchaseOrderOut(ORMModel):
     expected_on: date | None = None
     delivered_on: date | None = None
     created_at: datetime
+
+
+class NextStepIn(BaseModel):
+    """The agreed next move on a deal, optionally logged as activity."""
+
+    next_step: str = Field(min_length=1, max_length=300)
+    due_on: date | None = None
+    log_activity: bool = True
+    activity_type: str | None = None
+    activity_subject: str | None = None
+    activity_body: str | None = None
+
+
+class RecurringIn(BaseModel):
+    name: str = Field(min_length=1, max_length=200)
+    kind: str = "expense"
+    amount: float = Field(ge=0)
+    currency: str = "USD"
+    cadence: str = "monthly"
+    day_of_month: int = Field(default=1, ge=1, le=31)
+    starts_on: date
+    ends_on: date | None = None
+    next_run: date | None = None
+    is_active: bool = True
+    description: str | None = None
+    account_id: uuid.UUID | None = None
+    category_id: uuid.UUID | None = None
+    project_id: uuid.UUID | None = None
+    vendor_id: uuid.UUID | None = None
+    customer_id: uuid.UUID | None = None
+
+
+class RecurringUpdate(BaseModel):
+    name: str | None = None
+    amount: float | None = None
+    cadence: str | None = None
+    day_of_month: int | None = None
+    ends_on: date | None = None
+    next_run: date | None = None
+    is_active: bool | None = None
+    description: str | None = None
+    account_id: uuid.UUID | None = None
+    category_id: uuid.UUID | None = None
+    project_id: uuid.UUID | None = None

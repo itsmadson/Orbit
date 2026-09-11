@@ -1,7 +1,7 @@
 import uuid
 from datetime import datetime
 
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict, Field
 
 from app.schemas.common import ORMModel, UserRef
 
@@ -98,3 +98,38 @@ class DashboardOut(BaseModel):
     meetings: list[dict]
     my_tasks: list[dict]
     activity: list[dict]
+
+
+class SavedViewIn(BaseModel):
+    entity: str
+    name: str = Field(min_length=1, max_length=120)
+    filters: dict = Field(default_factory=dict)
+    is_shared: bool = False
+    is_default: bool = False
+    icon: str | None = None
+    order_index: int = 0
+
+
+class SavedViewUpdate(BaseModel):
+    name: str | None = None
+    filters: dict | None = None
+    is_shared: bool | None = None
+    is_default: bool | None = None
+    icon: str | None = None
+    order_index: int | None = None
+
+
+class SavedViewOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    id: uuid.UUID
+    entity: str
+    name: str
+    filters: dict
+    is_shared: bool
+    is_default: bool
+    icon: str | None = None
+    order_index: int = 0
+    use_count: int = 0
+    owner_id: uuid.UUID
+    is_mine: bool = False
+    created_at: datetime

@@ -11,11 +11,13 @@ from app.core.errors import BadRequest, Forbidden
 from app.core.pagination import Paging, as_page
 from app.models.identity import Department, User
 from app.models.people import (
-    AttendanceRecord, LeaveRequest, OnboardingItem, Skill, UserSkill,
+    AttendanceRecord, LeaveAdjustment, LeavePolicy, LeaveRequest, OnboardingItem,
+    Skill, UserSkill,
 )
 from app.schemas.common import Message
 from app.schemas.people import (
-    AttendanceIn, AttendanceOut, HrSummary, LeaveDecision, LeaveIn, LeaveOut,
+    AttendanceIn, AttendanceOut, HrSummary, LeaveAdjustmentIn, LeaveDecision, LeaveIn,
+    LeaveOut, LeavePolicyIn,
     OnboardingIn, OnboardingOut, SkillIn, SkillOut, UserSkillIn, UserSkillOut,
 )
 from app.services import audit, notifications
@@ -350,3 +352,138 @@ def remove_user_skill(user_id: uuid.UUID, skill_id: uuid.UUID, db: DbSession,
     if link:
         db.delete(link)
     return Message(message="Skill removed")
+
+
+# ------------------------------------------------------------------ balances
+DEFAULT_POLICIES = [
+    {"leave_type": "vacation", "annual_days": 28, "max_carryover": 5},
+    {"leave_type": "sick", "annual_days": 10, "max_carryover": 0},
+    {"leave_type": "personal", "annual_days": 3, "max_carryover": 0},
+    {"leave_type": "remote", "annual_days": 0, "max_carryover": 0, "requires_approval": False},
+]
+
+
+def _policies(db, company_id) -> list[LeavePolicy]:
+    rows = db.scalars(
+        select(LeavePolicy).where(LeavePolicy.company_id == company_id)
+        .order_by(LeavePolicy.leave_type)
+    ).all()
+    if not rows:
+        # First read seeds the defaults, so the module works before anyone
+        # visits settings.
+        rows = [LeavePolicy(company_id=company_id, **spec) for spec in DEFAULT_POLICIES]
+        db.add_all(rows)
+        db.flush()
+    return rows
+
+
+def leave_balance(db, user: User, target: User, year: int) -> list[dict]:
+    """Entitlement minus what is taken or pending, per leave type."""
+    out = []
+    for policy in _policies(db, target.company_id):
+        taken = db.scalar(
+            select(func.coalesce(func.sum(LeaveRequest.days), 0)).where(
+                LeaveRequest.user_id == target.id,
+                LeaveRequest.type == policy.leave_type,
+                LeaveRequest.status == "approved",
+                func.extract("year", LeaveRequest.start_date) == year,
+            )
+        ) or 0
+        pending = db.scalar(
+            select(func.coalesce(func.sum(LeaveRequest.days), 0)).where(
+                LeaveRequest.user_id == target.id,
+                LeaveRequest.type == policy.leave_type,
+                LeaveRequest.status == "pending",
+                func.extract("year", LeaveRequest.start_date) == year,
+            )
+        ) or 0
+        adjustments = db.scalar(
+            select(func.coalesce(func.sum(LeaveAdjustment.days), 0)).where(
+                LeaveAdjustment.user_id == target.id,
+                LeaveAdjustment.leave_type == policy.leave_type,
+                LeaveAdjustment.year == year,
+            )
+        ) or 0
+        entitled = float(policy.annual_days) + float(adjustments)
+        out.append({
+            "leave_type": policy.leave_type,
+            "annual_days": float(policy.annual_days),
+            "adjustments": float(adjustments),
+            "entitled": entitled,
+            "taken": float(taken),
+            "pending": float(pending),
+            # Pending counts against the balance: a day you have asked for is a
+            # day you cannot also spend elsewhere.
+            "remaining": round(entitled - float(taken) - float(pending), 1),
+            "requires_approval": policy.requires_approval,
+            "is_paid": policy.is_paid,
+        })
+    return out
+
+
+@router.get("/leave/balance")
+def my_balance(db: DbSession, user: CurrentUser, user_id: uuid.UUID | None = None,
+               year: int | None = None):
+    """Your own balance, or someone else's if you are allowed to see it."""
+    target = user
+    if user_id and user_id != user.id:
+        if not can(db, user, "hr.read"):
+            raise Forbidden("You can only see your own leave balance.")
+        target = get_or_404(db, User, user_id, user.company_id, "User")
+    year = year or date.today().year
+    balances = leave_balance(db, user, target, year)
+    return {
+        "user": user_ref(target),
+        "year": year,
+        "balances": balances,
+        "total_remaining": round(
+            sum(b["remaining"] for b in balances if b["annual_days"] > 0), 1
+        ),
+    }
+
+
+@router.get("/leave/policies")
+def list_policies(db: DbSession, user: Annotated[User, Depends(require("hr.read"))]):
+    return [
+        {
+            "id": p.id, "leave_type": p.leave_type, "annual_days": float(p.annual_days),
+            "max_carryover": float(p.max_carryover), "accrues_monthly": p.accrues_monthly,
+            "requires_approval": p.requires_approval, "is_paid": p.is_paid,
+        }
+        for p in _policies(db, user.company_id)
+    ]
+
+
+@router.patch("/leave/policies/{policy_id}")
+def update_policy(policy_id: uuid.UUID, payload: LeavePolicyIn, db: DbSession,
+                  user: Annotated[User, Depends(require("hr.manage"))]):
+    policy = get_or_404(db, LeavePolicy, policy_id, user.company_id, "Policy")
+    for key, value in payload.model_dump(exclude_unset=True).items():
+        setattr(policy, key, value)
+    db.flush()
+    audit.record(db, actor=user, action="updated", entity_type="leave_policy",
+                 entity_id=policy.id,
+                 summary=f"{policy.leave_type}: {policy.annual_days} days a year")
+    return {"id": policy.id, "leave_type": policy.leave_type,
+            "annual_days": float(policy.annual_days)}
+
+
+@router.post("/leave/adjustments", status_code=201)
+def adjust_balance(payload: LeaveAdjustmentIn, db: DbSession,
+                   user: Annotated[User, Depends(require("hr.write"))]):
+    """Correct someone's balance — carryover, a bought day, a fix — with a reason."""
+    target = get_or_404(db, User, payload.user_id, user.company_id, "User")
+    adjustment = LeaveAdjustment(
+        company_id=user.company_id, created_by_id=user.id, **payload.model_dump()
+    )
+    db.add(adjustment)
+    db.flush()
+    audit.record(db, actor=user, action="updated", entity_type="user", entity_id=target.id,
+                 summary=f"Leave adjustment for {target.full_name}: "
+                         f"{payload.days:+g} {payload.leave_type} days")
+    notifications.notify(
+        db, user_id=target.id, company_id=user.company_id, type="hr_update",
+        title=f"Your {payload.leave_type} balance changed by {payload.days:+g} days",
+        body=payload.reason, url="/hr", actor_id=user.id,
+    )
+    return {"id": adjustment.id, "days": float(adjustment.days)}

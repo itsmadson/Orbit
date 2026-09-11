@@ -1,7 +1,7 @@
 import uuid
 from datetime import date, datetime
 
-from sqlalchemy import Date, DateTime, ForeignKey, Integer, Numeric, String, Text, UniqueConstraint
+from sqlalchemy import Boolean, Date, DateTime, ForeignKey, Integer, Numeric, String, Text, UniqueConstraint
 from sqlalchemy.dialects.postgresql import JSONB, UUID as PGUUID
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -139,3 +139,47 @@ class KeyResult(OrbitBase):
         PGUUID(as_uuid=True), ForeignKey("tasks.id", ondelete="SET NULL")
     )
     meta: Mapped[dict] = mapped_column(JSONB, default=dict)
+
+
+class LeavePolicy(OrbitBase):
+    """How many days of each leave type a year grants.
+
+    Without this a leave request is a form with no arithmetic behind it — you
+    cannot tell whether someone has the days to spend.
+    """
+
+    __tablename__ = "leave_policies"
+    __table_args__ = (
+        UniqueConstraint("company_id", "leave_type", name="uq_leave_policies_company_id"),
+    )
+
+    company_id: Mapped[uuid.UUID] = mapped_column(
+        PGUUID(as_uuid=True), ForeignKey("companies.id", ondelete="CASCADE"), index=True
+    )
+    leave_type: Mapped[str] = mapped_column(String(20), nullable=False)
+    annual_days: Mapped[float] = mapped_column(Numeric(5, 1), default=0)
+    #: Days that may roll into next year; 0 means use-it-or-lose-it.
+    max_carryover: Mapped[float] = mapped_column(Numeric(5, 1), default=0)
+    accrues_monthly: Mapped[bool] = mapped_column(Boolean, default=False)
+    requires_approval: Mapped[bool] = mapped_column(Boolean, default=True)
+    is_paid: Mapped[bool] = mapped_column(Boolean, default=True)
+
+
+class LeaveAdjustment(OrbitBase):
+    """A manual correction to someone's balance, with a reason on the record."""
+
+    __tablename__ = "leave_adjustments"
+
+    company_id: Mapped[uuid.UUID] = mapped_column(
+        PGUUID(as_uuid=True), ForeignKey("companies.id", ondelete="CASCADE"), index=True
+    )
+    user_id: Mapped[uuid.UUID] = mapped_column(
+        PGUUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), index=True
+    )
+    leave_type: Mapped[str] = mapped_column(String(20), default="vacation")
+    year: Mapped[int] = mapped_column(Integer, nullable=False)
+    days: Mapped[float] = mapped_column(Numeric(5, 1), default=0)
+    reason: Mapped[str | None] = mapped_column(String(300))
+    created_by_id: Mapped[uuid.UUID | None] = mapped_column(
+        PGUUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL")
+    )

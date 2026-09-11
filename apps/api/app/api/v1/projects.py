@@ -15,10 +15,11 @@ from app.models.identity import User
 from app.models.knowledge import Decision, Document
 from app.models.ops import Meeting
 from app.models.system import AuditLog
-from app.models.work import Milestone, Project, ProjectMember, Task
+from app.models.work import Milestone, Project, ProjectCheckin, ProjectMember, Task
 from app.schemas.common import ActivityOut, Message
 from app.schemas.work import (
-    MilestoneIn, MilestoneOut, ProjectIn, ProjectMemberIn, ProjectOut, ProjectUpdate,
+    CheckinIn, MilestoneIn, MilestoneOut, ProjectIn, ProjectMemberIn, ProjectOut,
+    ProjectUpdate,
 )
 from app.services import audit, graph, notifications
 
@@ -455,4 +456,70 @@ def project_roadmap(project_id: uuid.UUID, db: DbSession,
         "milestones": [MilestoneOut.model_validate(m).model_dump()
                        for m in sorted(project.milestones, key=lambda m: (m.due_date or date.max))],
         "epics": out,
+    }
+
+
+# ------------------------------------------------------------------ check-ins
+@router.get("/{project_id}/checkins")
+def list_checkins(project_id: uuid.UUID, db: DbSession,
+                  user: Annotated[User, Depends(require("projects.read"))]):
+    get_or_404(db, Project, project_id, user.company_id, "Project")
+    rows = db.scalars(
+        select(ProjectCheckin)
+        .where(ProjectCheckin.project_id == project_id)
+        .order_by(ProjectCheckin.period_end.desc(), ProjectCheckin.created_at.desc())
+    ).all()
+    return [
+        {
+            "id": row.id, "health": row.health, "summary": row.summary,
+            "progress": row.progress, "highlights": row.highlights, "risks": row.risks,
+            "next_steps": row.next_steps, "period_end": row.period_end,
+            "author": user_ref(db.get(User, row.author_id)) if row.author_id else None,
+            "created_at": row.created_at,
+        }
+        for row in rows
+    ]
+
+
+@router.post("/{project_id}/checkins", status_code=201)
+def create_checkin(project_id: uuid.UUID, payload: CheckinIn, db: DbSession,
+                   user: Annotated[User, Depends(require("projects.write"))]):
+    """Post a status update, and let it move the project's own health.
+
+    The health field and the check-in would otherwise drift apart, leaving the
+    dashboard asserting something no one had said since.
+    """
+    project = get_or_404(db, Project, project_id, user.company_id, "Project")
+    checkin = ProjectCheckin(
+        company_id=user.company_id, project_id=project_id, author_id=user.id,
+        **payload.model_dump(),
+    )
+    db.add(checkin)
+    previous = project.health
+    project.health = payload.health
+    if payload.progress is not None:
+        project.progress = payload.progress
+    db.flush()
+
+    audit.record(db, actor=user, action="status_changed", entity_type="project",
+                 entity_id=project.id,
+                 summary=f"Check-in on {project.name}: {payload.health}",
+                 changes={"health": {"from": previous, "to": payload.health}})
+
+    # A project turning red is news for the people on it.
+    if payload.health != "on_track" and payload.health != previous:
+        member_ids = db.scalars(
+            select(ProjectMember.user_id).where(ProjectMember.project_id == project_id)
+        ).all()
+        notifications.notify_many(
+            db, [uid for uid in member_ids if uid != user.id],
+            company_id=user.company_id, type="project_update",
+            title=f"{project.name} is {payload.health.replace('_', ' ')}",
+            body=payload.summary[:200], entity_type="project", entity_id=project.id,
+            url=f"/projects/{project.id}", actor_id=user.id, priority="high",
+        )
+    return {
+        "id": checkin.id, "health": checkin.health, "summary": checkin.summary,
+        "progress": checkin.progress, "period_end": checkin.period_end,
+        "author": user_ref(user), "created_at": checkin.created_at,
     }

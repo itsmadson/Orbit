@@ -1,7 +1,8 @@
 from app.models.base import Base, OrbitBase, SoftDeleteMixin, TimestampMixin, UUIDMixin
 from app.models.business import (
     Asset, Budget, Contact, Contract, CrmActivity, CrmCompany, Deal,
-    FinanceAccount, FinanceCategory, Invoice, PurchaseOrder, Transaction, Vendor,
+    FinanceAccount, FinanceCategory, Invoice, PurchaseOrder, RecurringTransaction,
+    Transaction, Vendor,
 )
 from app.models.identity import Company, Department, PermissionGrant, User, UserSession
 from app.models.innovation import (
@@ -15,13 +16,16 @@ from app.models.ops import (
     ActionItem, Approval, Meeting, MeetingParticipant, WorkflowDefinition, WorkflowRequest,
 )
 from app.models.people import (
-    AttendanceRecord, Goal, KeyResult, LeaveRequest, OnboardingItem, Skill, UserSkill,
+    AttendanceRecord, Goal, KeyResult, LeaveAdjustment, LeavePolicy, LeaveRequest,
+    OnboardingItem, Skill, UserSkill,
 )
 from app.models.system import (
     AiConversation, Attachment, AuditLog, Comment, Integration, Notification, Relation,
+    SavedView,
 )
 from app.models.work import (
-    Milestone, Project, ProjectMember, Sprint, Sprint as SprintModel, Task, TaskDependency,
+    Milestone, Project, ProjectCheckin, ProjectMember, Sprint, Sprint as SprintModel,
+    Task, TaskDependency,
 )
 
 __all__ = [
