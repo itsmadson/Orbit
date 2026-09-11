@@ -235,9 +235,14 @@ def letter_html(
     author: User | None = None,
     signer: User | None = None,
     standalone: bool = True,
+    font_base_url: str | None = None,
 ) -> str:
     """The single source of truth for how a letter looks — used by the PDF
-    renderer and by the browser preview, so what you see is what prints."""
+    renderer and by the browser preview, so what you see is what prints.
+
+    `font_base_url` is where Vazirmatn is fetched from: the bundled directory
+    for server-side PDF rendering, or a URL the browser can reach for preview.
+    """
     head = head or Letterhead(
         company_id=company.id, name="default", org_name=company.name,
     )
@@ -320,13 +325,29 @@ def letter_html(
         items = "".join(f"<li>{escape(str(c))}</li>" for c in letter.cc)
         cc_html = f'<div class="cc"><span>رونوشت:</span><ul>{items}</ul></div>'
 
-    footer = head.footer_html or f'<div class="contact">{_contact_line(head, digits)}</div>'
+    if head.footer_image_data_url:
+        bleed = " banner-full" if head.header_image_full_bleed else ""
+        footer = (
+            f'<div class="banner banner-bottom{bleed}">'
+            f'<img src="{head.footer_image_data_url}" alt="" /></div>'
+        )
+    else:
+        footer = head.footer_html or f'<div class="contact">{_contact_line(head, digits)}</div>'
+
+    banner_class = " banner-full" if head.header_image_full_bleed else ""
+    if head.header_image_data_url:
+        header_block = (
+            f'<div class="banner banner-top{banner_class}">'
+            f'<img src="{head.header_image_data_url}" alt="" /></div>'
+            f'<div class="meta meta-under">{meta}</div>'
+        )
+    else:
+        header_block = f'{header}<div class="meta">{meta}</div>'
 
     body = f"""
     <div class="sheet">
       <header class="letter-header">
-        {header}
-        <div class="meta">{meta}</div>
+        {header_block}
       </header>
       {marks_html}
       <section class="to">{recipient}</section>
@@ -354,6 +375,7 @@ def letter_html(
          if head.show_page_numbers else ''}
       }}"""
 
+    fonts = font_base_url or f"file://{FONT_DIR}"
     return f"""<!doctype html>
 <html lang="{head.language}" dir="{head.direction}">
 <head>
@@ -362,13 +384,21 @@ def letter_html(
 <style>
   @font-face {{
     font-family: "Vazirmatn";
-    src: url("file://{FONT_DIR}/Vazirmatn-Regular.ttf") format("truetype");
+    src: url("{fonts}/Vazirmatn-Regular.ttf") format("truetype");
     font-weight: 400;
+    font-display: swap;
   }}
   @font-face {{
     font-family: "Vazirmatn";
-    src: url("file://{FONT_DIR}/Vazirmatn-Bold.ttf") format("truetype");
+    src: url("{fonts}/Vazirmatn-Medium.ttf") format("truetype");
+    font-weight: 500;
+    font-display: swap;
+  }}
+  @font-face {{
+    font-family: "Vazirmatn";
+    src: url("{fonts}/Vazirmatn-Bold.ttf") format("truetype");
     font-weight: 700;
+    font-display: swap;
   }}
   {page_rule}
   * {{ box-sizing: border-box; }}
@@ -381,14 +411,36 @@ def letter_html(
     direction: {head.direction};
   }}
   .letter-header {{
-    display: flex; align-items: flex-start; justify-content: space-between;
-    gap: 16mm; padding-bottom: 4mm; border-bottom: 1.5pt solid {head.accent_color};
+    display: flex;
+    flex-direction: {'column' if head.header_image_data_url else 'row'};
+    align-items: {'stretch' if head.header_image_data_url else 'flex-start'};
+    justify-content: space-between;
+    gap: 16mm; padding-bottom: 4mm;
+    border-bottom: {'0' if head.header_image_data_url else f'1.5pt solid {head.accent_color}'};
+  }}
+  /* A wide, short banner spanning the sheet — pre-printed stationery. */
+  .banner {{ line-height: 0; }}
+  .banner img {{ width: 100%; height: auto; object-fit: contain; }}
+  .banner-top img {{ max-height: {head.header_image_height_mm}mm; }}
+  .banner-bottom img {{ max-height: {head.footer_image_height_mm}mm; }}
+  .banner-full {{
+    margin-left: -{head.margin_x_mm}mm;
+    margin-right: -{head.margin_x_mm}mm;
+    width: calc(100% + {head.margin_x_mm * 2}mm);
   }}
   .org {{ display: flex; align-items: center; gap: 4mm; }}
   .logo {{ height: 16mm; width: auto; }}
   .org-name {{ font-size: {head.font_size_pt + 3}pt; font-weight: 700; }}
   .org-sub {{ font-size: {head.font_size_pt - 2}pt; color: #5b6270; }}
   .meta {{ min-width: 42mm; font-size: {head.font_size_pt - 1}pt; }}
+  /* Under a banner the header is a single column, so the meta block sits
+     inline instead of beside the organisation name. */
+  .meta-under {{
+    display: flex; flex-wrap: wrap; gap: 1mm 8mm; width: 100%;
+    padding-top: 3mm; margin-top: 2mm;
+    border-top: 0.75pt solid {head.accent_color};
+  }}
+  .meta-under .meta-row {{ min-width: 40mm; }}
   .meta-row {{ display: flex; gap: 1mm; }}
   .meta-label {{ min-width: 14mm; color: #5b6270; }}
   .meta-value {{ font-weight: 600; }}
@@ -405,23 +457,24 @@ def letter_html(
   .subject-label {{ color: #5b6270; font-weight: 500; }}
   .body {{ text-align: justify; }}
   .body p {{ margin: 0 0 3mm; text-indent: 6mm; }}
-  .body ul, .body ol {{ padding-inline-start: 8mm; margin: 0 0 3mm; }}
+  .body ul, .body ol {{ padding-{'right' if rtl else 'left'}: 8mm; margin: 0 0 3mm; }}
   .body table {{ width: 100%; border-collapse: collapse; margin: 3mm 0; }}
   .body th, .body td {{ border: 0.5pt solid #b9c0cc; padding: 1.5mm 2mm; }}
   .closing {{ margin-top: 5mm; }}
   .signature {{
-    margin-top: 10mm; text-align: center; width: 60mm;
-    margin-inline-start: auto; position: relative;
+    margin-top: 10mm; text-align: center; width: 60mm; position: relative;
+    margin-{'right' if rtl else 'left'}: auto;
   }}
   .sig-img {{ height: 16mm; display: block; margin: 0 auto 1mm; }}
   .sig-name {{ font-weight: 700; }}
   .sig-title {{ font-size: {head.font_size_pt - 2}pt; color: #5b6270; }}
-  .stamp {{ height: 24mm; position: absolute; inset-inline-start: -18mm; top: -4mm; opacity: 0.85; }}
+  .stamp {{ height: 24mm; position: absolute; {'right' if rtl else 'left'}: -18mm; top: -4mm; opacity: 0.85; }}
   .cc {{ margin-top: 10mm; font-size: {head.font_size_pt - 2}pt; color: #5b6270; }}
-  .cc ul {{ margin: 1mm 0 0; padding-inline-start: 6mm; }}
+  .cc ul {{ margin: 1mm 0 0; padding-{'right' if rtl else 'left'}: 6mm; }}
   .letter-footer {{
-    position: fixed; bottom: 0; inset-inline: 0;
-    border-top: 0.5pt solid #d6dae2; padding-top: 2mm;
+    position: fixed; bottom: 0; left: 0; right: 0;
+    border-top: {'0' if head.footer_image_data_url else '0.5pt solid #d6dae2'};
+    padding-top: {'0' if head.footer_image_data_url else '2mm'};
     font-size: {head.font_size_pt - 3}pt; color: #6b7280; text-align: center;
   }}
 </style>
@@ -458,6 +511,7 @@ def render_docx(
 
     doc = Docx()
     section = doc.sections[0]
+
     section.top_margin = Mm(head.margin_top_mm)
     section.bottom_margin = Mm(head.margin_bottom_mm)
     section.left_margin = section.right_margin = Mm(head.margin_x_mm)
@@ -492,11 +546,16 @@ def render_docx(
     def num(value: str) -> str:
         return to_fa_digits(value) if digits == "fa" else value
 
-    para(head.org_name or company.name, bold=True, size=head.font_size_pt + 3,
-         align=WD_ALIGN_PARAGRAPH.CENTER, space_after=2)
-    if head.org_subtitle:
-        para(head.org_subtitle, size=head.font_size_pt - 2,
-             align=WD_ALIGN_PARAGRAPH.CENTER, space_after=10)
+    # Banner stationery goes into Word's own header/footer so it repeats on
+    # every page, exactly like the PDF.
+    banner_width = Mm(210 - head.margin_x_mm * 2)
+    if not _docx_banner(section.header, head.header_image_data_url, banner_width):
+        para(head.org_name or company.name, bold=True, size=head.font_size_pt + 3,
+             align=WD_ALIGN_PARAGRAPH.CENTER, space_after=2)
+        if head.org_subtitle:
+            para(head.org_subtitle, size=head.font_size_pt - 2,
+                 align=WD_ALIGN_PARAGRAPH.CENTER, space_after=10)
+    _docx_banner(section.footer, head.footer_image_data_url, banner_width)
 
     label_number = "شماره" if rtl else "No."
     label_date = "تاریخ" if rtl else "Date"
@@ -544,12 +603,34 @@ def render_docx(
              size=head.font_size_pt - 2)
 
     contact = " · ".join(b for b in [head.address, head.phone, head.email, head.website] if b)
-    if contact:
+    if contact and not head.footer_image_data_url:
         para(contact, size=head.font_size_pt - 3, align=WD_ALIGN_PARAGRAPH.CENTER)
 
     buffer = io.BytesIO()
     doc.save(buffer)
     return buffer.getvalue()
+
+
+def _docx_banner(part, data_url: str | None, width) -> bool:
+    """Drop a data-URL banner into a Word header or footer. Returns whether
+    anything was written, so callers can fall back to a text block."""
+    if not data_url or "," not in data_url:
+        return False
+    import base64
+
+    from docx.enum.text import WD_ALIGN_PARAGRAPH
+
+    try:
+        payload = base64.b64decode(data_url.split(",", 1)[1])
+    except Exception:
+        return False
+    paragraph = part.paragraphs[0] if part.paragraphs else part.add_paragraph()
+    paragraph.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    try:
+        paragraph.add_run().add_picture(io.BytesIO(payload), width=width)
+    except Exception:
+        return False
+    return True
 
 
 _BLOCK_RE = re.compile(r"<(?:p|div|li|h[1-6])[^>]*>(.*?)</(?:p|div|li|h[1-6])>", re.S | re.I)

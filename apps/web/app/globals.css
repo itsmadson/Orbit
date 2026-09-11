@@ -221,6 +221,47 @@ textarea,
     backdrop-filter: blur(14px) saturate(140%);
     -webkit-backdrop-filter: blur(14px) saturate(140%);
   }
+  /* The app is a pair of floating slabs on the canvas rather than panes butted
+     against the viewport edge — no corner of the chrome is square. */
+  .slab {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-2xl);
+    box-shadow: var(--shadow-panel);
+  }
+  .rail {
+    background:
+      var(--glow-warm),
+      var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-2xl);
+    box-shadow: var(--shadow-panel);
+  }
+  /* The small rounded square that carries a nav item's icon. */
+  .nav-tile {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 26px;
+    height: 26px;
+    border-radius: 9px;
+    background: var(--surface-2);
+    border: 1px solid transparent;
+    color: var(--muted);
+    transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+  }
+  .nav-row:hover .nav-tile {
+    background: var(--elevated);
+    border-color: var(--border);
+    color: var(--text);
+  }
+  .nav-row[data-active="true"] .nav-tile {
+    background: linear-gradient(160deg, var(--accent-hot), var(--accent-solid));
+    border-color: transparent;
+    color: #fff;
+    box-shadow: var(--shadow-accent);
+  }
+
   /* Solid accent icon tile — the recurring mark of the system. */
   .tile {
     display: inline-flex;

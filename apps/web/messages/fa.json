@@ -422,5 +422,15 @@
   "status.planned": "برنامه‌ریزی‌شده",
   "status.running": "در حال اجرا",
   "status.validated": "تأیید شد",
-  "status.failed": "ناموفق"
+  "status.failed": "ناموفق",
+  "settings.currency": "واحد پول",
+  "settings.currencyHint": "همه مبالغ در این واحد نمایش داده می‌شوند.",
+  "settings.currencySaved": "واحد پول به‌روزرسانی شد",
+  "letters.headerImage": "تصویر سربرگ",
+  "letters.footerImage": "تصویر پاورقی",
+  "letters.bannerHint": "تصویری عریض و کم‌ارتفاع در عرض کاغذ — سربرگ چاپی شما.",
+  "letters.bannerHeight": "ارتفاع (میلی‌متر)",
+  "letters.fullBleed": "تمام عرض صفحه",
+  "letters.removeImage": "حذف",
+  "letters.unnumbered": "بدون شماره"
 }

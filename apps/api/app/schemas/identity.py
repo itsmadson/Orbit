@@ -31,6 +31,13 @@ class CompanyOut(ORMModel):
     currency: str
 
 
+class CompanyUpdate(BaseModel):
+    name: str | None = Field(default=None, min_length=1, max_length=200)
+    logo_emoji: str | None = None
+    default_locale: str | None = None
+    currency: str | None = None
+
+
 class DepartmentOut(ORMModel):
     id: uuid.UUID
     name: str

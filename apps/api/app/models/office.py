@@ -51,6 +51,14 @@ class Letterhead(OrbitBase, SoftDeleteMixin):
     logo_key: Mapped[str | None] = mapped_column(String(500))
     logo_data_url: Mapped[str | None] = mapped_column(Text)
 
+    # Pre-printed stationery: a wide, short banner across the top of the sheet
+    # and another across the bottom. When set, they replace the generated blocks.
+    header_image_data_url: Mapped[str | None] = mapped_column(Text)
+    footer_image_data_url: Mapped[str | None] = mapped_column(Text)
+    header_image_height_mm: Mapped[int] = mapped_column(Integer, default=26)
+    footer_image_height_mm: Mapped[int] = mapped_column(Integer, default=16)
+    header_image_full_bleed: Mapped[bool] = mapped_column(Boolean, default=True)
+
     # Free-form HTML overrides; when set they replace the generated blocks.
     header_html: Mapped[str | None] = mapped_column(Text)
     footer_html: Mapped[str | None] = mapped_column(Text)

@@ -1,5 +1,6 @@
 import { clsx, type ClassValue } from "clsx";
 import { twMerge } from "tailwind-merge";
+import { currencyOf } from "@/lib/currency";
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
@@ -28,12 +29,31 @@ export function formatCurrency(
   compact = false,
 ) {
   if (value === null || value === undefined) return "—";
+  const spec = currencyOf(currency);
+  const intlLocale = locale === "fa" ? "fa-IR" : "en-US";
   const useCompact = compact && Math.abs(value) >= 100_000;
-  return new Intl.NumberFormat(locale === "fa" ? "fa-IR" : "en-US", {
+  const maximumFractionDigits = useCompact
+    ? 1
+    : compact || Math.abs(value) >= 1000
+      ? 0
+      : spec.decimals;
+
+  // Intl only knows ISO codes, and Toman is not one — so anything non-ISO gets
+  // the number formatted on its own and the symbol placed by hand.
+  if (!spec.iso) {
+    const amount = new Intl.NumberFormat(intlLocale, {
+      maximumFractionDigits,
+      notation: useCompact ? "compact" : "standard",
+    }).format(value);
+    const symbol = locale === "fa" ? spec.symbol_fa : spec.symbol_en;
+    return spec.symbol_position === "after" ? `${amount} ${symbol}` : `${symbol}${amount}`;
+  }
+
+  return new Intl.NumberFormat(intlLocale, {
     style: "currency",
-    currency,
+    currency: spec.code,
     // Compact keeps one decimal so 1.2M and 1.0M do not both render as "1M".
-    maximumFractionDigits: useCompact ? 1 : compact || Math.abs(value) >= 1000 ? 0 : 2,
+    maximumFractionDigits,
     notation: useCompact ? "compact" : "standard",
   }).format(value);
 }

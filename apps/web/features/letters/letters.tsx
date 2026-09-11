@@ -55,7 +55,7 @@ export function LettersView() {
         row.number ? (
           <span dir="auto" className="font-mono text-[12px] tnum text-text">{row.number}</span>
         ) : (
-          <span className="text-[11px] text-faint">{t("letters.drafts")}</span>
+          <span className="text-[11px] text-faint">{t("letters.unnumbered")}</span>
         ),
     },
     {

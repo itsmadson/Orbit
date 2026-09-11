@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { toast } from "sonner";
-import { Hash, Plus, Stamp, Trash2 } from "lucide-react";
+import { Hash, ImagePlus, Plus, Stamp, Trash2 } from "lucide-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import { useT } from "@/lib/i18n";
@@ -13,6 +13,7 @@ import { Section } from "@/components/shared/page";
 import { Badge, EmptyState, Separator } from "@/components/ui/misc";
 import { Button } from "@/components/ui/button";
 import { Field, Input, Textarea } from "@/components/ui/input";
+import { cn } from "@/lib/utils";
 import { SimpleSelect } from "@/components/ui/select";
 
 /** Header, footer and numbering — captured once, used by every letter. */
@@ -294,6 +295,11 @@ function LetterheadCard({
         website: form.website,
         postal_code: form.postal_code,
         logo_data_url: form.logo_data_url,
+        header_image_data_url: form.header_image_data_url,
+        footer_image_data_url: form.footer_image_data_url,
+        header_image_height_mm: form.header_image_height_mm ?? 26,
+        footer_image_height_mm: form.footer_image_height_mm ?? 16,
+        header_image_full_bleed: form.header_image_full_bleed ?? true,
         signature_data_url: form.signature_data_url,
         stamp_data_url: form.stamp_data_url,
         footer_html: form.footer_html,
@@ -351,7 +357,7 @@ function LetterheadCard({
               disabled={!editable}
             />
           </Field>
-          <Field label="Logo">
+          <Field label="Logo" hint="Used when no header banner is set">
             <div className="flex items-center gap-3">
               {form.logo_data_url ? (
                 // eslint-disable-next-line @next/next/no-img-element
@@ -479,9 +485,137 @@ function LetterheadCard({
           <p className="text-[11px] leading-relaxed text-faint">
             The signature and stamp are printed only once a letter is signed.
           </p>
+
+          <Separator />
+
+          {/* Pre-printed stationery. When a banner is set it replaces the
+              generated header or footer entirely. */}
+          <BannerField
+            label={t("letters.headerImage")}
+            hint={t("letters.bannerHint")}
+            value={form.header_image_data_url}
+            height={form.header_image_height_mm ?? 26}
+            maxHeight={70}
+            editable={editable}
+            onChange={(value) => set({ header_image_data_url: value })}
+            onHeight={(mm) => set({ header_image_height_mm: mm })}
+          />
+          <BannerField
+            label={t("letters.footerImage")}
+            value={form.footer_image_data_url}
+            height={form.footer_image_height_mm ?? 16}
+            maxHeight={50}
+            editable={editable}
+            onChange={(value) => set({ footer_image_data_url: value })}
+            onHeight={(mm) => set({ footer_image_height_mm: mm })}
+          />
+          <label className="flex items-center gap-2 text-[11px] text-muted">
+            <input
+              type="checkbox"
+              checked={form.header_image_full_bleed ?? true}
+              disabled={!editable}
+              onChange={(e) => set({ header_image_full_bleed: e.target.checked })}
+              className="h-3.5 w-3.5 accent-[var(--accent)]"
+            />
+            {t("letters.fullBleed")}
+          </label>
         </div>
       </div>
     </Section>
+  );
+}
+
+/** Upload for a wide, short stationery banner, previewed at its real width. */
+function BannerField({
+  label,
+  hint,
+  value,
+  height,
+  onChange,
+  onHeight,
+  editable,
+  maxHeight,
+}: {
+  label: string;
+  hint?: string;
+  value?: string | null;
+  height: number;
+  onChange: (dataUrl: string | null) => void;
+  onHeight: (mm: number) => void;
+  editable: boolean;
+  maxHeight: number;
+}) {
+  const t = useT();
+  const inputRef = React.useRef<HTMLInputElement>(null);
+
+  function read(file: File) {
+    if (file.size > 3_000_000) {
+      toast.error("Image must be under 3 MB");
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = () => onChange(String(reader.result));
+    reader.readAsDataURL(file);
+  }
+
+  return (
+    <div className="space-y-2">
+      <div className="flex items-end justify-between gap-3">
+        <div>
+          <p className="text-[12px] font-medium text-text">{label}</p>
+          {hint ? <p className="text-[11px] text-muted">{hint}</p> : null}
+        </div>
+        {value && editable ? (
+          <Button size="xs" variant="ghost" onClick={() => onChange(null)}>
+            {t("letters.removeImage")}
+          </Button>
+        ) : null}
+      </div>
+
+      <button
+        type="button"
+        disabled={!editable}
+        onClick={() => inputRef.current?.click()}
+        className={cn(
+          "flex w-full items-center justify-center overflow-hidden rounded-lg border border-dashed border-border bg-surface-2 transition-colors",
+          editable && "hover:border-accent/50",
+          !value && "py-6",
+        )}
+        style={value ? { aspectRatio: `210 / ${Math.max(height, 6)}` } : undefined}
+      >
+        {value ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={value} alt="" className="h-full w-full object-contain" />
+        ) : (
+          <span className="flex items-center gap-1.5 text-[12px] text-muted">
+            <ImagePlus className="h-3.5 w-3.5" />
+            {t("letters.bannerHint")}
+          </span>
+        )}
+      </button>
+
+      <input
+        ref={inputRef}
+        type="file"
+        accept="image/png,image/jpeg,image/svg+xml,image/webp"
+        className="hidden"
+        onChange={(e) => e.target.files?.[0] && read(e.target.files[0])}
+      />
+
+      <label className="flex items-center gap-2 text-[11px] text-muted">
+        <span className="w-24 shrink-0">{t("letters.bannerHeight")}</span>
+        <input
+          type="range"
+          min={8}
+          max={maxHeight}
+          value={height}
+          disabled={!editable}
+          onChange={(e) => onHeight(Number(e.target.value))}
+          className="h-1 flex-1 accent-[var(--accent)]"
+        />
+        <span className="w-8 text-end tnum text-text">{height}</span>
+      </label>
+    </div>
   );
 }
 

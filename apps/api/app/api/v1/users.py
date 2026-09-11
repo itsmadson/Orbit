@@ -10,12 +10,14 @@ from app.core.errors import BadRequest, Conflict, Forbidden
 from app.core.pagination import Paging, as_page
 from app.core.rbac import ROLES
 from app.core.security import hash_password
-from app.models.identity import Department, PermissionGrant, User
+from app.core import currency
+from app.models.identity import Company, Department, PermissionGrant, User
 from app.models.people import UserSkill, Skill
 from app.models.work import ProjectMember, Project, Task
 from app.schemas.common import Message
 from app.schemas.identity import (
-    DepartmentIn, DepartmentOut, PermissionGrantIn, UserCreate, UserOut, UserUpdate,
+    CompanyOut, CompanyUpdate, DepartmentIn, DepartmentOut, PermissionGrantIn,
+    UserCreate, UserOut, UserUpdate,
 )
 from app.services import audit
 
@@ -304,3 +306,31 @@ def delete_grant(
     if grant:
         db.delete(grant)
     return Message(message="Grant removed")
+
+# ------------------------------------------------------------------ company
+@router.get("/currencies")
+def list_currencies(user: CurrentUser):
+    """The currencies a workspace may keep its books in."""
+    return {"items": currency.as_dicts(), "default": currency.DEFAULT}
+
+
+@router.get("/company", response_model=CompanyOut)
+def get_company(db: DbSession, user: Annotated[User, Depends(require("company.read"))]):
+    return db.get(Company, user.company_id)
+
+
+@router.patch("/company", response_model=CompanyOut)
+def update_company(payload: CompanyUpdate, db: DbSession,
+                   user: Annotated[User, Depends(require("company.write"))]):
+    org = db.get(Company, user.company_id)
+    changes = payload.model_dump(exclude_unset=True)
+    if "currency" in changes and not currency.is_supported(changes["currency"]):
+        raise BadRequest(f"Unsupported currency: {changes['currency']}")
+    before = {key: getattr(org, key) for key in changes}
+    for key, value in changes.items():
+        setattr(org, key, value)
+    db.flush()
+    audit.record(db, actor=user, action="updated", entity_type="company",
+                 entity_id=org.id, summary=f"Updated {', '.join(changes)}",
+                 changes=audit.diff(before, changes))
+    return org

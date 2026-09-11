@@ -323,6 +323,11 @@ export type Letterhead = {
   org_name_secondary?: string | null;
   org_subtitle?: string | null;
   logo_data_url?: string | null;
+  header_image_data_url?: string | null;
+  footer_image_data_url?: string | null;
+  header_image_height_mm: number;
+  footer_image_height_mm: number;
+  header_image_full_bleed: boolean;
   header_html?: string | null;
   footer_html?: string | null;
   address?: string | null;

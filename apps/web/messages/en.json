@@ -392,5 +392,15 @@
   "letters.settings": "Secretariat settings",
   "letters.empty": "No letters yet",
   "letters.emptyHint": "Compose the first one — it will be numbered automatically.",
-  "common.optional": "Optional"
+  "common.optional": "Optional",
+  "settings.currency": "Currency",
+  "settings.currencyHint": "Every amount in the workspace is shown in this currency.",
+  "settings.currencySaved": "Currency updated",
+  "letters.headerImage": "Header banner",
+  "letters.footerImage": "Footer banner",
+  "letters.bannerHint": "A wide, short image across the sheet — your pre-printed stationery.",
+  "letters.bannerHeight": "Height (mm)",
+  "letters.fullBleed": "Span the full page width",
+  "letters.removeImage": "Remove",
+  "letters.unnumbered": "Not numbered"
 }

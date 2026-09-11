@@ -88,7 +88,7 @@ export function LetterDetail({ letterId }: { letterId: string }) {
             {data.number ? (
               <span dir="auto" className="font-mono tnum text-text">{data.number}</span>
             ) : (
-              <span className="text-faint">{t("letters.drafts")}</span>
+              <span className="text-faint">{t("letters.unnumbered")}</span>
             )}
             <span className="text-faint">·</span>
             <span>{data.letter_date_display ?? formatDate(data.letter_date, locale)}</span>

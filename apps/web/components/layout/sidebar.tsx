@@ -24,25 +24,27 @@ export function Sidebar({ unread }: { unread: number }) {
   return (
     <aside
       className={cn(
-        "hidden shrink-0 flex-col border-e border-border bg-surface/60 transition-[width] duration-200 lg:flex",
-        sidebarCollapsed ? "w-[56px]" : "w-[228px]",
+        "rail hidden shrink-0 flex-col overflow-hidden transition-[width] duration-200 lg:flex",
+        sidebarCollapsed ? "w-[64px]" : "w-[232px]",
       )}
     >
-      <div className="flex h-12 items-center gap-2 px-3">
-        <Link href="/" className="flex min-w-0 items-center gap-2">
-          <OrbitMark />
+      <div className={cn("flex h-14 items-center gap-2.5 px-3.5", sidebarCollapsed && "justify-center px-0")}>
+        <Link href="/" className="flex min-w-0 items-center gap-2.5">
+          <span className="tile h-8 w-8">
+            <OrbitMark size={18} mono />
+          </span>
           {!sidebarCollapsed ? (
-            <span className="truncate text-[14px] font-semibold tracking-tight">ORBIT</span>
+            <span className="truncate text-[15px] font-semibold tracking-[-0.01em]">ORBIT</span>
           ) : null}
         </Link>
       </div>
 
       {!sidebarCollapsed ? (
-        <div className="px-3 pb-2">
+        <div className="px-3 pb-3">
           <Button
             variant="primary"
             size="sm"
-            className="w-full justify-start"
+            className="h-9 w-full justify-center rounded-xl"
             onClick={() => setQuickCreateOpen(true)}
           >
             <Plus className="h-3.5 w-3.5" />
@@ -50,9 +52,13 @@ export function Sidebar({ unread }: { unread: number }) {
           </Button>
         </div>
       ) : (
-        <div className="px-2 pb-2">
-          <Button variant="primary" size="icon-sm" onClick={() => setQuickCreateOpen(true)}>
-            <Plus className="h-3.5 w-3.5" />
+        <div className="flex justify-center px-2 pb-3">
+          <Button
+            variant="primary"
+            className="h-9 w-9 rounded-xl p-0"
+            onClick={() => setQuickCreateOpen(true)}
+          >
+            <Plus className="h-4 w-4" />
           </Button>
         </div>
       )}
@@ -68,7 +74,7 @@ export function Sidebar({ unread }: { unread: number }) {
                 <button
                   type="button"
                   onClick={() => toggleGroup(group.key)}
-                  className="flex w-full items-center gap-1 px-2 py-1 text-[10px] font-semibold uppercase tracking-wider text-faint transition-colors hover:text-muted"
+                  className="mb-1 flex w-full items-center gap-1 rounded-lg px-2 py-1 text-[9.5px] font-semibold uppercase tracking-[0.12em] text-faint transition-colors hover:bg-surface-2 hover:text-muted"
                 >
                   <ChevronDown
                     className={cn("h-3 w-3 transition-transform", collapsed && "-rotate-90 rtl:rotate-90")}
@@ -84,18 +90,21 @@ export function Sidebar({ unread }: { unread: number }) {
                     const link = (
                       <Link
                         href={item.href}
+                        data-active={active}
                         className={cn(
-                          "group flex items-center gap-2 rounded-md px-2 py-1.5 text-[13px] transition-colors",
+                          "nav-row group flex items-center gap-2.5 rounded-xl px-1.5 py-1 text-[13px] transition-colors",
                           active
-                            ? "bg-accent-soft text-accent"
+                            ? "bg-elevated font-medium text-text shadow-[var(--shadow-panel)]"
                             : "text-muted hover:bg-surface-2 hover:text-text",
                           sidebarCollapsed && "justify-center px-0",
                         )}
                       >
-                        <item.icon className="h-4 w-4 shrink-0" />
+                        <span className="nav-tile">
+                          <item.icon className="h-[15px] w-[15px] shrink-0" />
+                        </span>
                         {!sidebarCollapsed ? <span className="truncate">{label}</span> : null}
                         {!sidebarCollapsed && item.href === "/inbox" && unread > 0 ? (
-                          <span className="ms-auto rounded-full bg-accent-solid px-1.5 text-[10px] font-medium text-accent-fg">
+                          <span className="ms-auto rounded-full bg-accent-solid px-1.5 text-[10px] font-medium text-accent-fg tnum">
                             {unread}
                           </span>
                         ) : null}
@@ -120,49 +129,54 @@ export function Sidebar({ unread }: { unread: number }) {
         })}
       </nav>
 
-      <div className="border-t border-border p-2">
+      <div className="border-t border-border p-2.5">
         <Link
           href="/settings"
           className={cn(
-            "flex items-center gap-2 rounded-md px-2 py-1.5 text-[13px] text-muted transition-colors hover:bg-surface-2 hover:text-text",
+            "nav-row flex items-center gap-2.5 rounded-xl px-1.5 py-1 text-[13px] text-muted transition-colors hover:bg-surface-2 hover:text-text",
             sidebarCollapsed && "justify-center px-0",
           )}
         >
-          <Settings className="h-4 w-4" />
+          <span className="nav-tile">
+            <Settings className="h-[15px] w-[15px]" />
+          </span>
           {!sidebarCollapsed ? t("nav.settings") : null}
         </Link>
         <button
           type="button"
           onClick={toggleSidebar}
           className={cn(
-            "mt-0.5 flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-[13px] text-faint transition-colors hover:bg-surface-2 hover:text-text",
+            "nav-row mt-0.5 flex w-full items-center gap-2.5 rounded-xl px-1.5 py-1 text-[12px] text-faint transition-colors hover:bg-surface-2 hover:text-text",
             sidebarCollapsed && "justify-center px-0",
           )}
         >
-          {sidebarCollapsed ? (
-            <PanelLeftOpen className="h-4 w-4" />
-          ) : (
-            <>
-              <PanelLeftClose className="h-4 w-4" />
-              <span className="truncate">{company.name}</span>
-            </>
-          )}
+          <span className="nav-tile">
+            {sidebarCollapsed ? (
+              <PanelLeftOpen className="h-[15px] w-[15px]" />
+            ) : (
+              <PanelLeftClose className="h-[15px] w-[15px]" />
+            )}
+          </span>
+          {!sidebarCollapsed ? <span className="truncate">{company.name}</span> : null}
         </button>
       </div>
     </aside>
   );
 }
 
-export function OrbitMark({ size = 22 }: { size?: number }) {
+export function OrbitMark({ size = 22, mono = false }: { size?: number; mono?: boolean }) {
+  const core = mono ? "currentColor" : "var(--accent)";
+  const ring = mono ? "currentColor" : "var(--accent)";
+  const counter = mono ? "currentColor" : "var(--text)";
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="none" className="shrink-0">
-      <circle cx="12" cy="12" r="3.2" fill="var(--accent)" />
+      <circle cx="12" cy="12" r="3.2" fill={core} />
       <ellipse
         cx="12"
         cy="12"
         rx="10"
         ry="5"
-        stroke="var(--accent)"
+        stroke={ring}
         strokeOpacity="0.55"
         strokeWidth="1.4"
         transform="rotate(-28 12 12)"
@@ -172,7 +186,7 @@ export function OrbitMark({ size = 22 }: { size?: number }) {
         cy="12"
         rx="10"
         ry="5"
-        stroke="var(--text)"
+        stroke={counter}
         strokeOpacity="0.28"
         strokeWidth="1.2"
         transform="rotate(38 12 12)"

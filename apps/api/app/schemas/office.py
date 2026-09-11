@@ -15,6 +15,11 @@ class LetterheadIn(BaseModel):
     org_name_secondary: str | None = None
     org_subtitle: str | None = None
     logo_data_url: str | None = None
+    header_image_data_url: str | None = None
+    footer_image_data_url: str | None = None
+    header_image_height_mm: int = Field(default=26, ge=5, le=80)
+    footer_image_height_mm: int = Field(default=16, ge=5, le=60)
+    header_image_full_bleed: bool = True
     header_html: str | None = None
     footer_html: str | None = None
     address: str | None = None

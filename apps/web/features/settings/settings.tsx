@@ -15,10 +15,11 @@ import { Avatar, Badge, StatusBadge, Tabs, TabsContent, TabsList, TabsTrigger } 
 import { Button } from "@/components/ui/button";
 import { Field, Input } from "@/components/ui/input";
 import { SimpleSelect } from "@/components/ui/select";
+import { CURRENCIES } from "@/lib/currency";
 import { UserPicker } from "@/components/shared/pickers";
 import { Column, DataTable } from "@/components/shared/data";
 import { ActivityFeed } from "@/components/shared/entity";
-import { cn, formatDate, humanize } from "@/lib/utils";
+import { cn, formatCurrency, formatDate, humanize } from "@/lib/utils";
 
 export function SettingsView() {
   const t = useT();
@@ -142,10 +143,11 @@ export function SettingsView() {
                 <span className="text-[28px]">{company.logo_emoji}</span>
                 <div>
                   <p className="text-[15px] font-medium">{company.name}</p>
-                  <p className="text-[12px] text-muted">
-                    {company.slug} · {company.currency}
-                  </p>
+                  <p className="text-[12px] text-muted">{company.slug}</p>
                 </div>
+              </div>
+              <div className="mt-4">
+                <CurrencyPicker />
               </div>
               <div className="mt-4 space-y-1.5 text-[12px] text-muted">
                 <p className="flex items-center gap-2">
@@ -335,6 +337,65 @@ export function SettingsView() {
           </Section>
         </TabsContent>
       </Tabs>
+    </div>
+  );
+}
+
+/**
+ * The books are kept in one currency. Toman is the default choice for Iranian
+ * workspaces; it is not an ISO code, so it is formatted by hand downstream.
+ */
+function CurrencyPicker() {
+  const t = useT();
+  const { locale } = useI18n();
+  const { company, can } = useSession();
+  const router = useRouter();
+  const [value, setValue] = React.useState(company.currency ?? "USD");
+  const [saving, setSaving] = React.useState(false);
+  const editable = can("company.write");
+
+  React.useEffect(() => setValue(company.currency ?? "USD"), [company.currency]);
+
+  async function save(next: string) {
+    setValue(next);
+    setSaving(true);
+    try {
+      await api.patch("/company", { currency: next });
+      toast.success(t("settings.currencySaved"));
+      // The session (and its currency) is rendered on the server, so the whole
+      // tree has to be refetched for the new one to reach every amount.
+      router.refresh();
+    } catch (error: any) {
+      setValue(company.currency ?? "USD");
+      toast.error(error?.message ?? "Failed");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  const sample = formatCurrency(1234567.89, value, locale, false);
+  const compactSample = formatCurrency(1234567.89, value, locale, true);
+
+  return (
+    <div className="space-y-2">
+      <Field label={t("settings.currency")} hint={t("settings.currencyHint")}>
+        <SimpleSelect
+          value={value}
+          onValueChange={save}
+          disabled={!editable || saving}
+          options={CURRENCIES.map((currency) => ({
+            value: currency.code,
+            label: `${locale === "fa" ? currency.name_fa : currency.name_en} · ${currency.code}`,
+          }))}
+        />
+      </Field>
+      <div className="flex flex-wrap items-center gap-x-4 gap-y-1 rounded-md border border-border bg-surface-2 px-3 py-2">
+        <span className="text-[10.5px] font-medium uppercase tracking-[0.07em] text-muted">
+          {t("letters.preview")}
+        </span>
+        <span dir="auto" className="tnum text-[14px] font-medium text-text">{sample}</span>
+        <span dir="auto" className="tnum text-[12px] text-muted">{compactSample}</span>
+      </div>
     </div>
   );
 }

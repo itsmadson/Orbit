@@ -117,12 +117,14 @@ def _register(db, letter: Letter, user: User) -> None:
         letter.status = "awaiting_signature" if letter.kind != "incoming" else "received"
 
 
-def _rendered(db, letter: Letter, user: User) -> tuple[str, Letterhead | None, Company]:
+def _rendered(db, letter: Letter, user: User,
+              font_base_url: str | None = None) -> tuple[str, Letterhead | None, Company]:
     company = _company(db, user)
     head = _letterhead(db, user, letter.letterhead_id)
     author = db.get(User, letter.author_id) if letter.author_id else None
     signer = db.get(User, letter.signer_id) if letter.signer_id else None
-    html = svc.letter_html(letter, head, company, author=author, signer=signer)
+    html = svc.letter_html(letter, head, company, author=author, signer=signer,
+                           font_base_url=font_base_url)
     return html, head, company
 
 
@@ -569,7 +571,7 @@ def void_letter(letter_id: uuid.UUID, db: DbSession,
 def preview_letter(letter_id: uuid.UUID, db: DbSession,
                    user: Annotated[User, Depends(require("letters.read"))]):
     letter = get_or_404(db, Letter, letter_id, user.company_id)
-    html, _, _ = _rendered(db, letter, user)
+    html, _, _ = _rendered(db, letter, user, font_base_url="/fonts")
     numbering = svc.default_numbering(db, user.company_id)
     return {
         "html": html,

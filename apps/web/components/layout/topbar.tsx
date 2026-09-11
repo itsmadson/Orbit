@@ -47,7 +47,7 @@ export function Topbar() {
   };
 
   return (
-    <header className="sticky top-0 z-30 flex h-12 items-center gap-2 border-b border-border glass px-3">
+    <header className="sticky top-0 z-30 flex h-14 items-center gap-2 border-b border-border/70 bg-[color-mix(in_oklab,var(--surface)_88%,transparent)] px-3 backdrop-blur-xl lg:px-4">
       <Link href="/" className="flex items-center gap-2 lg:hidden">
         <OrbitMark size={20} />
         <span className="text-[14px] font-semibold tracking-tight">ORBIT</span>
@@ -56,7 +56,7 @@ export function Topbar() {
       <button
         type="button"
         onClick={() => setPaletteOpen(true)}
-        className="group ms-auto flex h-8 w-full max-w-md items-center gap-2 rounded-md border border-border bg-surface-2 px-2.5 text-[13px] text-faint transition-colors hover:border-border-strong hover:text-muted lg:ms-0"
+        className="group ms-auto flex h-9 w-full max-w-md items-center gap-2 rounded-full border border-border bg-surface-2 px-3.5 text-[13px] text-faint transition-colors hover:border-accent/40 hover:text-muted lg:ms-0"
       >
         <Search className="h-3.5 w-3.5" />
         <span className="truncate">{t("palette.placeholder")}</span>
@@ -70,7 +70,7 @@ export function Topbar() {
       <div className="ms-auto flex items-center gap-0.5">
         <Link
           href="/inbox"
-          className="relative rounded-md p-1.5 text-muted transition-colors hover:bg-surface-2 hover:text-text"
+          className="relative rounded-xl border border-transparent p-2 text-muted transition-colors hover:border-border hover:bg-surface-2 hover:text-text"
         >
           <Bell className="h-4 w-4" />
           {counts?.unread ? (
@@ -82,7 +82,7 @@ export function Topbar() {
 
         <Dropdown>
           <DropdownTrigger asChild>
-            <button className="rounded-md p-1.5 text-muted transition-colors hover:bg-surface-2 hover:text-text">
+            <button className="rounded-xl border border-transparent p-2 text-muted transition-colors hover:border-border hover:bg-surface-2 hover:text-text">
               <Languages className="h-4 w-4" />
             </button>
           </DropdownTrigger>
@@ -100,7 +100,7 @@ export function Topbar() {
         <button
           type="button"
           onClick={toggleTheme}
-          className="rounded-md p-1.5 text-muted transition-colors hover:bg-surface-2 hover:text-text"
+          className="rounded-xl border border-transparent p-2 text-muted transition-colors hover:border-border hover:bg-surface-2 hover:text-text"
         >
           <Sun className="hidden h-4 w-4 [html[data-theme='light']_&]:block" />
           <Moon className="block h-4 w-4 [html[data-theme='light']_&]:hidden" />
