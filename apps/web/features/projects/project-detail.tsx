@@ -387,7 +387,12 @@ export function ProjectDetailView({ projectId }: { projectId: string }) {
         </TabsContent>
 
         <TabsContent value="list">
-          <TaskTable data={tasks.data} loading={tasks.isLoading} hideProject />
+          <TaskTable
+            data={tasks.data}
+            loading={tasks.isLoading}
+            hideProject
+            projectId={projectId}
+          />
         </TabsContent>
 
         <TabsContent value="timeline">

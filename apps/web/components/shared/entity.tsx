@@ -12,6 +12,7 @@ import { toast } from "sonner";
 import { api } from "@/lib/api";
 import { useT } from "@/lib/i18n";
 import { OrbitLoading } from "@/components/ui/orbit-loader";
+import { CommentBody, MentionInput } from "@/components/shared/mention-input";
 import { cn, formatDate, relativeTime } from "@/lib/utils";
 import { Avatar, EmptyState, Skeleton, StatusBadge, TimeAgo } from "@/components/ui/misc";
 import { Button } from "@/components/ui/button";
@@ -50,6 +51,7 @@ export function Comments({ entityType, entityId }: { entityType: string; entityI
   const t = useT();
   const client = useQueryClient();
   const [body, setBody] = React.useState("");
+  const [mentions, setMentions] = React.useState<string[]>([]);
   const key = ["comments", entityType, entityId];
 
   const { data, isLoading } = useQuery({
@@ -59,13 +61,16 @@ export function Comments({ entityType, entityId }: { entityType: string; entityI
 
   const create = useMutation({
     mutationFn: (text: string) =>
-      api.post<Comment>("/comments", { body: text, mentions: [] }, {
+      api.post<Comment>("/comments", { body: text, mentions }, {
         entity_type: entityType,
         entity_id: entityId,
       }),
     onSuccess: () => {
       setBody("");
+      setMentions([]);
       client.invalidateQueries({ queryKey: key });
+      // A mention becomes someone's notification, so the badge should move now.
+      client.invalidateQueries({ queryKey: ["inbox-counts"] });
     },
     onError: (error: any) => toast.error(error.message),
   });
@@ -90,7 +95,7 @@ export function Comments({ entityType, entityId }: { entityType: string; entityI
                   </span>
                   <span className="text-[11px] text-faint">{<TimeAgo value={comment.created_at} />}</span>
                 </div>
-                <p className="whitespace-pre-wrap text-[13px] text-muted">{comment.body}</p>
+                <CommentBody body={comment.body} className="text-[13px] text-muted" />
               </div>
             </div>
           ))}
@@ -100,13 +105,19 @@ export function Comments({ entityType, entityId }: { entityType: string; entityI
         </div>
       )}
       <div className="space-y-2">
-        <Textarea
+        <MentionInput
           value={body}
-          onChange={(event) => setBody(event.target.value)}
+          onChange={setBody}
+          onMentionsChange={setMentions}
+          onSubmit={() => body.trim() && create.mutate(body)}
           placeholder={`${t("action.comment")}…`}
-          className="min-h-[64px]"
         />
-        <div className="flex justify-end">
+        <div className="flex items-center justify-end gap-2">
+          {mentions.length ? (
+            <span className="me-auto text-[11px] text-accent">
+              {t("comments.willNotify").replace("{count}", String(mentions.length))}
+            </span>
+          ) : null}
           <Button
             size="sm"
             variant="primary"

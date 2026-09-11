@@ -7,12 +7,13 @@ from sqlalchemy import func, or_, select
 
 from app.api.helpers import comment_count, get_or_404, user_ref
 from app.core.deps import CurrentUser, DbSession, require
-from app.core.errors import BadRequest
+from app.core.errors import BadRequest, NotFound
 from app.core.pagination import Paging, as_page
 from app.models.identity import User
 from app.models.work import Project, Sprint, Task, TaskDependency, TASK_STATUSES
 from app.schemas.common import Message
 from app.schemas.work import (
+    TaskBulkIn,
     SprintIn, SprintOut, TaskDetailOut, TaskIn, TaskMove, TaskOut, TaskUpdate,
 )
 from app.services import audit, graph, notifications
@@ -409,3 +410,73 @@ def update_sprint(sprint_id: uuid.UUID, payload: SprintIn, db: DbSession,
         "task_count": db.scalar(select(func.count(Task.id)).where(
             Task.sprint_id == sprint.id, Task.deleted_at.is_(None))) or 0,
     }
+
+@router.post("/tasks/bulk", response_model=Message)
+def bulk_update(payload: TaskBulkIn, db: DbSession,
+                user: Annotated[User, Depends(require("tasks.write"))]):
+    """Apply one change to many tasks — how a board actually gets triaged.
+
+    Only the fields present in the payload are touched, so "assign these six to
+    Maya" does not also clear their sprint.
+    """
+    if not payload.ids:
+        raise BadRequest("No tasks selected")
+    if len(payload.ids) > 200:
+        raise BadRequest("Too many tasks in one operation (limit 200)")
+
+    tasks = db.scalars(
+        select(Task).where(
+            Task.id.in_(payload.ids),
+            Task.company_id == user.company_id,
+            Task.deleted_at.is_(None),
+        )
+    ).all()
+    if not tasks:
+        raise NotFound("Task")
+
+    changes = payload.model_dump(exclude_unset=True, exclude={"ids", "action"})
+    if payload.status and payload.status not in TASK_STATUSES:
+        raise BadRequest(f"Unknown status: {payload.status}")
+
+    now = datetime.now(UTC)
+    touched = 0
+    for task in tasks:
+        if payload.action == "delete":
+            task.deleted_at = now
+            touched += 1
+            continue
+        for field, value in changes.items():
+            if field == "labels_add":
+                task.labels = sorted({*(task.labels or []), *value})
+                continue
+            if field == "labels_remove":
+                task.labels = [item for item in (task.labels or []) if item not in value]
+                continue
+            setattr(task, field, value)
+        if payload.status == "done" and not task.completed_at:
+            task.completed_at = now
+        if payload.status and payload.status != "done":
+            task.completed_at = None
+        if payload.assignee_id:
+            graph.link(db, company_id=user.company_id, from_type="task", from_id=task.id,
+                       rel_type="assigned_to", to_type="user", to_id=payload.assignee_id)
+        touched += 1
+
+    summary = (
+        f"Deleted {touched} tasks" if payload.action == "delete"
+        else f"Updated {touched} tasks ({', '.join(changes) or 'no fields'})"
+    )
+    audit.record(db, actor=user, action="updated", entity_type="task",
+                 summary=summary, changes={"ids": [str(i) for i in payload.ids]})
+
+    # Tell each new assignee once, not once per task.
+    if payload.assignee_id and payload.assignee_id != user.id:
+        notifications.notify(
+            db, user_id=payload.assignee_id, company_id=user.company_id,
+            type="task_assigned",
+            title=f"{user.full_name} assigned you {touched} task(s)",
+            body=", ".join(task.key for task in tasks[:5]),
+            url="/tasks?mine=1", actor_id=user.id,
+        )
+    return Message(message=summary)
+

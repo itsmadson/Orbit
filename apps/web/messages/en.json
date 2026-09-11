@@ -428,5 +428,15 @@
   "settings.choosePermission": "Choose a permission",
   "settings.noGrants": "No extra grants — everyone runs on their role's permissions.",
   "settings.grantHint": "Grants sit on top of a role and never replace it. You can only hand out permissions you hold yourself.",
-  "common.user": "User"
+  "common.user": "User",
+  "comments.mentionHint": "Type @ to mention someone · ⌘↵ to send",
+  "comments.willNotify": "{count} person will be notified",
+  "tasks.selected": "{count} selected",
+  "tasks.bulkDelete": "Delete {count} tasks",
+  "tasks.bulkDeleteBody": "They will be removed along with their comments and attachments. This cannot be undone.",
+  "priority.urgent": "Urgent",
+  "priority.high": "High",
+  "priority.medium": "Medium",
+  "priority.low": "Low",
+  "action.confirm": "Confirm"
 }

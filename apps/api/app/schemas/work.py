@@ -234,3 +234,18 @@ class BoardColumn(BaseModel):
     label: str
     tasks: list[TaskOut]
     count: int
+
+
+class TaskBulkIn(BaseModel):
+    """One change applied to many tasks. Unset fields are left alone."""
+
+    ids: list[uuid.UUID]
+    action: str | None = None            # "delete", or omit to update
+    status: str | None = None
+    priority: str | None = None
+    assignee_id: uuid.UUID | None = None
+    sprint_id: uuid.UUID | None = None
+    project_id: uuid.UUID | None = None
+    due_date: date | None = None
+    labels_add: list[str] | None = None
+    labels_remove: list[str] | None = None

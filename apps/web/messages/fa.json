@@ -458,5 +458,15 @@
   "settings.choosePermission": "یک دسترسی انتخاب کنید",
   "settings.noGrants": "دسترسی اضافه‌ای ثبت نشده — همه بر اساس نقش خود کار می‌کنند.",
   "settings.grantHint": "این دسترسی‌ها به نقش افزوده می‌شوند و جایگزین آن نمی‌شوند. تنها می‌توانید دسترسی‌هایی را اعطا کنید که خودتان دارید.",
-  "common.user": "کاربر"
+  "common.user": "کاربر",
+  "comments.mentionHint": "برای اشاره به کسی @ بزنید · ⌘↵ برای ارسال",
+  "comments.willNotify": "{count} نفر مطلع می‌شوند",
+  "tasks.selected": "{count} مورد انتخاب شده",
+  "tasks.bulkDelete": "حذف {count} وظیفه",
+  "tasks.bulkDeleteBody": "این وظایف به‌همراه دیدگاه‌ها و پیوست‌هایشان حذف می‌شوند. این کار بازگشت‌پذیر نیست.",
+  "priority.urgent": "آنی",
+  "priority.high": "زیاد",
+  "priority.medium": "متوسط",
+  "priority.low": "کم",
+  "action.confirm": "تأیید"
 }

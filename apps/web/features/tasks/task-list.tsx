@@ -1,11 +1,13 @@
 "use client";
 
+import * as React from "react";
 import Link from "next/link";
 import { CheckSquare } from "lucide-react";
 import { useI18n, useT } from "@/lib/i18n";
 import type { Task } from "@/lib/types";
 import { Column, DataTable, Pagination } from "@/components/shared/data";
-import { Avatar, EmptyState, StatusBadge } from "@/components/ui/misc";
+import { Avatar, Checkbox, EmptyState, StatusBadge } from "@/components/ui/misc";
+import { BulkBar } from "@/features/tasks/bulk-bar";
 import { TYPE_COLORS, TYPE_ICONS } from "@/features/tasks/task-card";
 import { cn, formatDate, isOverdue } from "@/lib/utils";
 import type { Page } from "@/lib/api";
@@ -15,14 +17,56 @@ export function TaskTable({
   loading,
   onPage,
   hideProject,
+  projectId,
+  selectable = true,
 }: {
   data?: Page<Task>;
   loading?: boolean;
   onPage?: (page: number) => void;
   hideProject?: boolean;
+  projectId?: string;
+  /** Off for read-only embeds, such as a project's task panel. */
+  selectable?: boolean;
 }) {
   const t = useT();
   const { locale } = useI18n();
+  const [selected, setSelected] = React.useState<string[]>([]);
+
+  const rows = data?.items ?? [];
+  const allSelected = rows.length > 0 && selected.length === rows.length;
+
+  // A page change should not leave a selection pointing at rows you can no
+  // longer see.
+  React.useEffect(() => {
+    setSelected((current) => current.filter((id) => rows.some((row) => row.id === id)));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [data?.page]);
+
+  const toggle = (id: string) =>
+    setSelected((current) =>
+      current.includes(id) ? current.filter((item) => item !== id) : [...current, id],
+    );
+
+  const selectColumn: Column<Task> = {
+    key: "select",
+    width: "36px",
+    header: (
+      <Checkbox
+        checked={allSelected}
+        onCheckedChange={(checked) => setSelected(checked ? rows.map((row) => row.id) : [])}
+      />
+    ),
+    cell: (row) => (
+      <span
+        onClick={(event) => {
+          event.preventDefault();
+          event.stopPropagation();
+        }}
+      >
+        <Checkbox checked={selected.includes(row.id)} onCheckedChange={() => toggle(row.id)} />
+      </span>
+    ),
+  };
 
   const columns: Column<Task>[] = [
     {
@@ -118,17 +162,22 @@ export function TaskTable({
   ];
 
   return (
-    <div className="panel overflow-hidden">
-      <DataTable
-        columns={columns}
-        rows={data?.items ?? []}
-        loading={loading}
-        rowHref={(row) => `/tasks/${row.id}`}
-        empty={<EmptyState icon={CheckSquare} title={t("common.empty")} />}
-      />
-      {data && onPage ? (
-        <Pagination page={data.page} pages={data.pages} total={data.total} onPage={onPage} />
+    <>
+      <div className="panel overflow-hidden">
+        <DataTable
+          columns={selectable ? [selectColumn, ...columns] : columns}
+          rows={rows}
+          loading={loading}
+          rowHref={(row) => `/tasks/${row.id}`}
+          empty={<EmptyState icon={CheckSquare} title={t("common.empty")} />}
+        />
+        {data && onPage ? (
+          <Pagination page={data.page} pages={data.pages} total={data.total} onPage={onPage} />
+        ) : null}
+      </div>
+      {selectable ? (
+        <BulkBar ids={selected} onClear={() => setSelected([])} projectId={projectId} />
       ) : null}
-    </div>
+    </>
   );
 }

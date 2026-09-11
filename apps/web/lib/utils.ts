@@ -118,6 +118,13 @@ export function isOverdue(date?: string | null) {
   return due < today;
 }
 
+/** Mirrors TASK_STATUSES in app/models/work.py. */
+export const TASK_STATUSES = [
+  "backlog", "todo", "in_progress", "in_review", "done", "cancelled",
+] as const;
+
+export const TASK_PRIORITIES = ["urgent", "high", "medium", "low"] as const;
+
 export const STATUS_TONES: Record<string, string> = {
   // task / generic
   backlog: "text-muted bg-surface-2 border-border",
