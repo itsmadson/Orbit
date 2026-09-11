@@ -11,7 +11,14 @@ export const metadata: Metadata = {
     template: `%s · ${process.env.NEXT_PUBLIC_APP_NAME ?? "ORBIT"}`,
   },
   description: "ORBIT connects projects, people, knowledge, operations and money in one workspace.",
-  icons: { icon: "/favicon.svg" },
+  icons: {
+    icon: [
+      { url: "/favicon.svg", type: "image/svg+xml" },
+      { url: "/icon-32.png", sizes: "32x32", type: "image/png" },
+    ],
+    apple: [{ url: "/apple-touch-icon.png", sizes: "180x180" }],
+  },
+  manifest: "/manifest.webmanifest",
 };
 
 export const viewport: Viewport = {

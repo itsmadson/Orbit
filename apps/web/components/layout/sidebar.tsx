@@ -164,33 +164,39 @@ export function Sidebar({ unread }: { unread: number }) {
   );
 }
 
+/**
+ * The product mark: a ringed planet with a moon on the ring.
+ *
+ * The ring is drawn in two halves around the planet so it reads as passing
+ * behind and in front — which is what keeps the silhouette legible down to
+ * favicon size, where a thin wire-frame orbit turns to mush.
+ * `mono` renders it in the current text colour, for use on the accent tile.
+ */
 export function OrbitMark({ size = 22, mono = false }: { size?: number; mono?: boolean }) {
-  const core = mono ? "currentColor" : "var(--accent)";
-  const ring = mono ? "currentColor" : "var(--accent)";
-  const counter = mono ? "currentColor" : "var(--text)";
+  const back = mono ? "currentColor" : "var(--accent)";
+  const front = mono ? "currentColor" : "var(--accent-hot)";
+  const body = mono ? "currentColor" : "var(--accent)";
   return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" className="shrink-0">
-      <circle cx="12" cy="12" r="3.2" fill={core} />
-      <ellipse
-        cx="12"
-        cy="12"
-        rx="10"
-        ry="5"
-        stroke={ring}
-        strokeOpacity="0.55"
-        strokeWidth="1.4"
-        transform="rotate(-28 12 12)"
-      />
-      <ellipse
-        cx="12"
-        cy="12"
-        rx="10"
-        ry="5"
-        stroke={counter}
-        strokeOpacity="0.28"
-        strokeWidth="1.2"
-        transform="rotate(38 12 12)"
-      />
+    <svg width={size} height={size} viewBox="0 0 48 48" fill="none" className="shrink-0">
+      <g transform="rotate(-24 24 24)">
+        <path
+          d="M6.5 24A17.5 7.5 0 0 1 41.5 24"
+          stroke={back}
+          strokeOpacity={mono ? 0.5 : 0.45}
+          strokeWidth="3"
+        />
+      </g>
+      <circle cx="24" cy="24" r="10.5" fill={body} />
+      <g transform="rotate(-24 24 24)">
+        <path
+          d="M41.5 24A17.5 7.5 0 0 1 6.5 24"
+          stroke={front}
+          strokeWidth="3.2"
+          strokeLinecap="round"
+          strokeOpacity={mono ? 0.95 : 1}
+        />
+        <circle cx="41.5" cy="24" r="3.6" fill={front} />
+      </g>
     </svg>
   );
 }
