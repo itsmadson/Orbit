@@ -13,7 +13,7 @@ import { api } from "@/lib/api";
 import { useT } from "@/lib/i18n";
 import { OrbitLoading } from "@/components/ui/orbit-loader";
 import { cn, formatDate, relativeTime } from "@/lib/utils";
-import { Avatar, EmptyState, Skeleton, StatusBadge } from "@/components/ui/misc";
+import { Avatar, EmptyState, Skeleton, StatusBadge, TimeAgo } from "@/components/ui/misc";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/input";
 import { useSession } from "@/components/providers";
@@ -88,7 +88,7 @@ export function Comments({ entityType, entityId }: { entityType: string; entityI
                   <span className="text-[13px] font-medium">
                     {comment.author?.full_name ?? "Unknown"}
                   </span>
-                  <span className="text-[11px] text-faint">{relativeTime(comment.created_at)}</span>
+                  <span className="text-[11px] text-faint">{<TimeAgo value={comment.created_at} />}</span>
                 </div>
                 <p className="whitespace-pre-wrap text-[13px] text-muted">{comment.body}</p>
               </div>
@@ -294,7 +294,7 @@ export function ActivityFeed({ items, compact }: { items: Activity[]; compact?: 
                 ))}
               </div>
             ) : null}
-            <p className="text-[11px] text-faint">{relativeTime(item.created_at)}</p>
+            <p className="text-[11px] text-faint">{<TimeAgo value={item.created_at} />}</p>
           </div>
         </li>
       ))}

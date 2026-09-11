@@ -15,6 +15,7 @@ import { Avatar, Badge, StatusBadge, Tabs, TabsContent, TabsList, TabsTrigger } 
 import { Button } from "@/components/ui/button";
 import { Field, Input } from "@/components/ui/input";
 import { SimpleSelect } from "@/components/ui/select";
+import { useConfirm } from "@/components/ui/confirm";
 import { CURRENCIES } from "@/lib/currency";
 import { UserPicker } from "@/components/shared/pickers";
 import { Column, DataTable } from "@/components/shared/data";
@@ -304,31 +305,7 @@ export function SettingsView() {
         </TabsContent>
 
         <TabsContent value="permissions">
-          <Section title={t("settings.permissions")} contentClassName="p-0">
-            <DataTable
-              columns={[
-                {
-                  key: "user",
-                  header: "User",
-                  cell: (row: any) => (
-                    <span className="flex items-center gap-2">
-                      <Avatar name={row.user?.full_name} color={row.user?.avatar_color} size={20} />
-                      {row.user?.full_name}
-                    </span>
-                  ),
-                },
-                { key: "permission", header: "Permission", cell: (row: any) => <Badge>{row.permission}</Badge> },
-                { key: "scope", header: "Scope", cell: (row: any) => <span className="text-[12px] text-muted">{row.scope_type}</span> },
-              ]}
-              rows={(grants.data ?? []) as any[]}
-              loading={grants.isLoading}
-              empty={
-                <p className="text-[13px] text-faint">
-                  No extra grants — everyone runs on their role's permissions.
-                </p>
-              }
-            />
-          </Section>
+          <PermissionGrants />
         </TabsContent>
 
         <TabsContent value="audit">
@@ -396,6 +373,143 @@ function CurrencyPicker() {
         <span dir="auto" className="tnum text-[14px] font-medium text-text">{sample}</span>
         <span dir="auto" className="tnum text-[12px] text-muted">{compactSample}</span>
       </div>
+    </div>
+  );
+}
+
+/**
+ * Scoped permission grants — extra access layered on top of someone's role.
+ *
+ * The API has always supported these; there was simply no way to reach them.
+ * Only permissions the signed-in account holds itself are offered, because the
+ * server refuses to grant anything the granter does not have.
+ */
+function PermissionGrants() {
+  const t = useT();
+  const { can } = useSession();
+  const client = useQueryClient();
+  const confirm = useConfirm();
+  const grants = useItem<any[]>("/permissions/grants");
+  const catalogue = useItem<{ grantable: string[] }>("/permissions/catalogue");
+  const [userId, setUserId] = React.useState("");
+  const [permission, setPermission] = React.useState("");
+  const [busy, setBusy] = React.useState(false);
+
+  const editable = can("settings.write");
+  const refresh = () => client.invalidateQueries({ queryKey: ["/permissions/grants"] });
+
+  async function grant() {
+    if (!userId || !permission) return;
+    setBusy(true);
+    try {
+      await api.post("/permissions/grants", {
+        user_id: userId,
+        permission,
+        scope_type: "company",
+      });
+      toast.success(t("settings.grantAdded"));
+      setPermission("");
+      refresh();
+    } catch (error: any) {
+      toast.error(error?.message ?? "Failed");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function revoke(row: any) {
+    const ok = await confirm({
+      title: t("settings.revokeGrant"),
+      body: `${row.user?.full_name} will lose ${row.permission}. Their role's own permissions are unaffected.`,
+      confirmLabel: t("settings.revoke"),
+      destructive: true,
+    });
+    if (!ok) return;
+    await api.delete(`/permissions/grants/${row.id}`);
+    refresh();
+  }
+
+  return (
+    <div className="space-y-4">
+      {editable ? (
+        <Section title={t("settings.addGrant")}>
+          <div className="flex flex-wrap items-end gap-2">
+            <Field label={t("common.user")} className="min-w-56 flex-1">
+              <UserPicker value={userId} onChange={(value) => setUserId(value ?? "")} />
+            </Field>
+            <Field label={t("settings.permission")} className="min-w-56 flex-1">
+              <SimpleSelect
+                value={permission}
+                onValueChange={setPermission}
+                placeholder={t("settings.choosePermission")}
+                options={(catalogue.data?.grantable ?? []).map((value) => ({
+                  value,
+                  label: value,
+                }))}
+              />
+            </Field>
+            <Button
+              variant="primary"
+              loading={busy}
+              disabled={!userId || !permission}
+              onClick={grant}
+            >
+              {t("settings.grant")}
+            </Button>
+          </div>
+          <p className="mt-2 text-[11px] leading-relaxed text-faint">
+            {t("settings.grantHint")}
+          </p>
+        </Section>
+      ) : null}
+
+      <Section title={t("settings.permissions")} contentClassName="p-0">
+        <DataTable
+          columns={[
+            {
+              key: "user",
+              header: t("common.user"),
+              cell: (row: any) => (
+                <span className="flex items-center gap-2">
+                  <Avatar name={row.user?.full_name} color={row.user?.avatar_color} size={20} />
+                  {row.user?.full_name}
+                </span>
+              ),
+            },
+            {
+              key: "permission",
+              header: t("settings.permission"),
+              cell: (row: any) => <Badge tone="active">{row.permission}</Badge>,
+            },
+            {
+              key: "scope",
+              header: t("settings.scope"),
+              cell: (row: any) => (
+                <span className="text-[12px] text-muted">{humanize(row.scope_type)}</span>
+              ),
+            },
+            ...(editable
+              ? [
+                  {
+                    key: "actions",
+                    header: "",
+                    className: "w-20 text-end",
+                    cell: (row: any) => (
+                      <Button size="xs" variant="ghost" onClick={() => revoke(row)}>
+                        {t("settings.revoke")}
+                      </Button>
+                    ),
+                  },
+                ]
+              : []),
+          ]}
+          rows={(grants.data ?? []) as any[]}
+          loading={grants.isLoading}
+          empty={
+            <p className="text-[13px] text-faint">{t("settings.noGrants")}</p>
+          }
+        />
+      </Section>
     </div>
   );
 }

@@ -52,5 +52,11 @@ export function DialogHeader({ title, description }: { title: string; descriptio
 }
 
 export function DialogFooter({ children }: { children: React.ReactNode }) {
-  return <div className="mt-5 flex items-center justify-end gap-2">{children}</div>;
+  return (
+    // Sticky so the confirming action stays reachable in a tall form instead of
+    // scrolling away below the fold.
+    <div className="sticky -bottom-5 -mx-5 -mb-5 mt-4 flex items-center justify-end gap-2 border-t border-border bg-elevated px-5 py-3">
+      {children}
+    </div>
+  );
 }

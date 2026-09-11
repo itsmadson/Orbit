@@ -5,10 +5,13 @@ from fastapi import APIRouter, Depends, Query
 from sqlalchemy import func, or_, select
 
 from app.api.helpers import get_or_404, user_ref
-from app.core.deps import CurrentUser, DbSession, can, require
+from app.core.deps import CurrentUser, DbSession, can, granted_permissions, require
 from app.core.errors import BadRequest, Conflict, Forbidden
 from app.core.pagination import Paging, as_page
-from app.core.rbac import ROLES
+from app.core.rbac import (
+    DOMAINS, MANAGE, READ, ROLES, WRITE, assignable_roles, can_assign_role,
+    describe_roles, has_permission, role_permissions,
+)
 from app.core.security import hash_password
 from app.core import currency
 from app.models.identity import Company, Department, PermissionGrant, User
@@ -135,7 +138,8 @@ def directory(db: DbSession, user: CurrentUser, q: str | None = None):
 
 @router.get("/users/roles")
 def list_roles(user: CurrentUser):
-    return ROLES
+    """Roles with what each one actually grants, so assigning one is not a guess."""
+    return {"items": describe_roles(), "assignable": assignable_roles(user.role)}
 
 
 @router.get("/users/{user_id}", response_model=UserOut)
@@ -207,6 +211,12 @@ def create_user(
 ):
     if payload.role not in ROLES:
         raise BadRequest(f"Unknown role: {payload.role}")
+    # A role may not mint one senior to itself, or the account it creates
+    # becomes a way around its own limits.
+    if not can_assign_role(user.role, payload.role):
+        raise Forbidden(
+            f"Your role cannot create a {payload.role.replace('_', ' ')} account."
+        )
     email = payload.email.lower()
     exists = db.scalar(
         select(User).where(User.company_id == user.company_id, User.email == email)
@@ -236,6 +246,19 @@ def update_user(
     changes = payload.model_dump(exclude_unset=True)
     if "role" in changes and changes["role"] not in ROLES:
         raise BadRequest(f"Unknown role: {changes['role']}")
+    if "role" in changes and changes["role"] != target.role:
+        if target.id == user.id:
+            raise Forbidden("You cannot change your own role.")
+        # Both the role being granted and the one being taken away must sit at
+        # or below the actor, so nobody can demote a senior or promote past self.
+        if not can_assign_role(user.role, changes["role"]):
+            raise Forbidden(
+                f"Your role cannot assign {changes['role'].replace('_', ' ')}."
+            )
+        if not can_assign_role(user.role, target.role):
+            raise Forbidden("You cannot change the role of a more senior account.")
+    if changes.get("is_active") is False and target.id == user.id:
+        raise Forbidden("You cannot deactivate your own account.")
     if "role" in changes and target.role != changes["role"]:
         audit.record(db, actor=user, action="permission_changed", entity_type="user",
                      entity_id=target.id,
@@ -257,11 +280,31 @@ def deactivate_user(
     target = get_or_404(db, User, user_id, user.company_id, "User")
     if target.id == user.id:
         raise BadRequest("You cannot deactivate your own account")
+    # Otherwise a junior role holding users.manage could lock out an admin.
+    if not can_assign_role(user.role, target.role):
+        raise Forbidden("You cannot deactivate a more senior account.")
     target.is_active = False
     target.deleted_at = datetime.now(UTC)
     audit.record(db, actor=user, action="deleted", entity_type="user", entity_id=target.id,
                  summary=f"Deactivated {target.full_name}")
     return Message(message="User deactivated")
+
+
+@router.get("/permissions/catalogue")
+def permission_catalogue(user: Annotated[User, Depends(require("settings.read"))]):
+    """Every permission, and which of them the caller is able to hand out."""
+    own = role_permissions(user.role)
+    return {
+        "domains": DOMAINS,
+        "actions": [READ, WRITE, MANAGE],
+        "grantable": sorted(
+            f"{domain}.{action}"
+            for domain in DOMAINS
+            for action in (READ, WRITE, MANAGE)
+            if has_permission(user.role, f"{domain}.{action}")
+        ),
+        "own": sorted(own),
+    }
 
 
 @router.get("/permissions/grants")
@@ -289,6 +332,13 @@ def create_grant(
     user: Annotated[User, Depends(require("settings.write"))],
 ):
     target = get_or_404(db, User, payload.user_id, user.company_id, "User")
+    domain, _, action = payload.permission.partition(".")
+    if domain not in DOMAINS or action not in (READ, WRITE, MANAGE):
+        raise BadRequest(f"Unknown permission: {payload.permission}")
+    # You cannot grant what you do not hold — otherwise settings.write becomes a
+    # route to every permission, including the one company_admin is denied.
+    if not has_permission(user.role, payload.permission, extra=granted_permissions(db, user)):
+        raise Forbidden(f"You do not hold {payload.permission}, so you cannot grant it.")
     grant = PermissionGrant(**payload.model_dump())
     db.add(grant)
     db.flush()

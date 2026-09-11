@@ -8,8 +8,8 @@ import * as TooltipPrimitive from "@radix-ui/react-tooltip";
 import * as SwitchPrimitive from "@radix-ui/react-switch";
 import * as CheckboxPrimitive from "@radix-ui/react-checkbox";
 import { ArrowDownRight, ArrowUpRight, Check } from "lucide-react";
-import { useT } from "@/lib/i18n";
-import { cn, humanize, initials, STATUS_TONES } from "@/lib/utils";
+import { useI18n, useT } from "@/lib/i18n";
+import { cn, formatDate, humanize, initials, relativeTime, STATUS_TONES } from "@/lib/utils";
 
 /* ------------------------------------------------------------------ avatar */
 export function Avatar({
@@ -333,6 +333,35 @@ export function Checkbox({
         <Check className="h-3 w-3 text-accent-fg" />
       </CheckboxPrimitive.Indicator>
     </CheckboxPrimitive.Root>
+  );
+}
+
+/**
+ * "2 hours ago", without the hydration mismatch.
+ *
+ * Relative time depends on `Date.now()`, which differs between the server
+ * render and the client's, so React discards the tree whenever the two land on
+ * opposite sides of a minute boundary. This renders the absolute date until
+ * after mount, then swaps in the relative phrasing.
+ */
+export function TimeAgo({
+  value,
+  className,
+  title,
+}: {
+  value?: string | Date | null;
+  className?: string;
+  title?: string;
+}) {
+  const { locale } = useI18n();
+  const [mounted, setMounted] = React.useState(false);
+  React.useEffect(() => setMounted(true), []);
+  if (!value) return <span className={className}>—</span>;
+  const absolute = formatDate(value, locale);
+  return (
+    <span className={className} title={title ?? absolute} suppressHydrationWarning>
+      {mounted ? relativeTime(value, locale) : absolute}
+    </span>
   );
 }
 

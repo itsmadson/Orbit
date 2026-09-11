@@ -6,6 +6,7 @@ import { MobileNav } from "@/components/layout/mobile-nav";
 import { CommandPalette, QuickCreate } from "@/components/layout/command-palette";
 import { Shortcuts } from "@/components/layout/shortcuts";
 import { useSession } from "@/components/providers";
+import { useHydrateUi } from "@/lib/store";
 
 /**
  * Two floating slabs on the canvas — a navigation rail and the work surface —
@@ -14,6 +15,7 @@ import { useSession } from "@/components/providers";
  */
 export function AppShell({ children }: { children: React.ReactNode }) {
   const session = useSession();
+  useHydrateUi();
   return (
     <div className="flex h-dvh gap-2 overflow-hidden bg-bg p-0 lg:gap-2.5 lg:p-2.5">
       <Sidebar unread={session.unread_notifications} />

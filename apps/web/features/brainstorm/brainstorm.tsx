@@ -11,6 +11,7 @@ import { useCreate, useItem } from "@/lib/hooks";
 import { useSession } from "@/components/providers";
 import { PageHeader, Section } from "@/components/shared/page";
 import { Button } from "@/components/ui/button";
+import { useConfirm } from "@/components/ui/confirm";
 import { Dialog, DialogContent, DialogFooter, DialogHeader } from "@/components/ui/dialog";
 import { Field, Input, Textarea } from "@/components/ui/input";
 import { EmptyState, Skeleton } from "@/components/ui/misc";
@@ -160,6 +161,7 @@ export function BrainstormListView() {
 /** Real canvas: cards are absolutely positioned, dragged with pointer events and
  *  persisted to Postgres on drop. */
 export function BrainstormBoardView({ boardId }: { boardId: string }) {
+  const confirm = useConfirm();
   const t = useT();
   const client = useQueryClient();
   const { can } = useSession();
@@ -341,6 +343,13 @@ export function BrainstormBoardView({ boardId }: { boardId: string }) {
                       type="button"
                       onPointerDown={(event) => event.stopPropagation()}
                       onClick={async () => {
+                        const ok = await confirm({
+                          title: t("brainstorm.deleteCard"),
+                          body: card.text,
+                          confirmLabel: t("action.delete"),
+                          destructive: true,
+                        });
+                        if (!ok) return;
                         await api.delete(`/brainstorm/${boardId}/cards/${card.id}`);
                         refresh();
                       }}

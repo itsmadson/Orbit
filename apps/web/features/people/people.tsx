@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useQueryClient } from "@tanstack/react-query";
 import {
   BadgeCheck, Briefcase, CalendarDays, Check, Clock, Mail, MapPin, Plus, UserPlus, Users, X,
+  RefreshCw,
 } from "lucide-react";
 import { toast } from "sonner";
 import { api } from "@/lib/api";
@@ -20,6 +21,8 @@ import { Dialog, DialogContent, DialogFooter, DialogHeader } from "@/components/
 import { Field, Input } from "@/components/ui/input";
 import { SimpleSelect } from "@/components/ui/select";
 import { UserPicker } from "@/components/shared/pickers";
+import { RolePicker } from "@/components/shared/role-picker";
+import { useConfirm } from "@/components/ui/confirm";
 import { cn, formatCurrency, formatDate, humanize, relativeTime } from "@/lib/utils";
 
 type Employee = {
@@ -40,6 +43,13 @@ type Employee = {
 const ROLES = [
   "company_admin", "manager", "project_manager", "employee", "finance", "hr", "rd", "viewer",
 ];
+
+/** A password the administrator does not have to invent — or remember. */
+function generatePassword() {
+  const alphabet = "abcdefghijkmnopqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+  const values = crypto.getRandomValues(new Uint32Array(16));
+  return Array.from(values, (n) => alphabet[n % alphabet.length]).join("");
+}
 
 export function EmployeesView() {
   const t = useT();
@@ -197,7 +207,7 @@ function EmployeeDialog({
   const [form, setForm] = React.useState({
     full_name: "",
     email: "",
-    password: "",
+    password: generatePassword(),
     role: "employee",
     title: "",
     department_id: "",
@@ -244,14 +254,26 @@ function EmployeeDialog({
                 onChange={(event) => setForm({ ...form, email: event.target.value })}
               />
             </Field>
-            <Field label={t("auth.password")} hint="min 8 characters">
-              <Input
-                type="password"
-                required
-                minLength={8}
-                value={form.password}
-                onChange={(event) => setForm({ ...form, password: event.target.value })}
-              />
+            <Field label={t("auth.password")} hint={t("people.passwordHint")}>
+              <div className="flex gap-1.5">
+                <Input
+                  type="text"
+                  required
+                  minLength={8}
+                  className="font-mono"
+                  value={form.password}
+                  onChange={(event) => setForm({ ...form, password: event.target.value })}
+                />
+                <Button
+                  type="button"
+                  variant="secondary"
+                  size="icon"
+                  title={t("people.generatePassword")}
+                  onClick={() => setForm({ ...form, password: generatePassword() })}
+                >
+                  <RefreshCw className="h-3.5 w-3.5" />
+                </Button>
+              </div>
             </Field>
             <Field label="Title">
               <Input
@@ -259,13 +281,7 @@ function EmployeeDialog({
                 onChange={(event) => setForm({ ...form, title: event.target.value })}
               />
             </Field>
-            <Field label={t("common.role")}>
-              <SimpleSelect
-                value={form.role}
-                onValueChange={(role) => setForm({ ...form, role })}
-                options={ROLES.map((value) => ({ value, label: humanize(value) }))}
-              />
-            </Field>
+
             <Field label={t("common.department")}>
               <SimpleSelect
                 value={form.department_id}
@@ -288,6 +304,10 @@ function EmployeeDialog({
               />
             </Field>
           </div>
+
+          <Field label={t("common.role")}>
+            <RolePicker value={form.role} onChange={(role) => setForm({ ...form, role })} />
+          </Field>
           <DialogFooter>
             <Button type="button" variant="ghost" onClick={() => onOpenChange(false)}>
               {t("action.cancel")}
@@ -355,7 +375,7 @@ export function EmployeeProfile({ userId }: { userId: string }) {
             ) : null}
           </span>
         }
-        actions={<Badge>{humanize(person.role)}</Badge>}
+        actions={<AccountActions person={person} isSelf={isSelf} />}
       />
 
       <div className="mb-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
@@ -481,6 +501,119 @@ export function EmployeeProfile({ userId }: { userId: string }) {
           </Section>
         </aside>
       </div>
+    </div>
+  );
+}
+
+/**
+ * Role and account state, editable in place.
+ *
+ * These were server capabilities with no way to reach them: an admin could
+ * create a user but never change their role or switch them off again.
+ */
+function AccountActions({ person, isSelf }: { person: any; isSelf: boolean }) {
+  const t = useT();
+  const { can } = useSession();
+  const client = useQueryClient();
+  const confirm = useConfirm();
+  const [editing, setEditing] = React.useState(false);
+  const [role, setRole] = React.useState(person.role);
+  const [busy, setBusy] = React.useState(false);
+  // Offer exactly what the server will accept, so the UI cannot present a
+  // choice that comes back as a 403.
+  const roles = useItem<{ items: { key: string; label: string }[]; assignable: string[] }>(
+    "/users/roles",
+  );
+  const options = (roles.data?.items ?? []).filter((item) =>
+    (roles.data?.assignable ?? []).includes(item.key),
+  );
+
+  const manages = can("users.write") && !isSelf;
+
+  const refresh = () => {
+    client.invalidateQueries({ queryKey: [`/users/${person.id}/profile`] });
+    client.invalidateQueries({ queryKey: ["/users"] });
+  };
+
+  async function saveRole() {
+    if (role === person.role) return setEditing(false);
+    setBusy(true);
+    try {
+      await api.patch(`/users/${person.id}`, { role });
+      toast.success(t("people.roleChanged"));
+      setEditing(false);
+      refresh();
+    } catch (error: any) {
+      setRole(person.role);
+      toast.error(error?.message ?? "Failed");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function toggleActive() {
+    const deactivating = person.is_active !== false;
+    if (deactivating) {
+      const ok = await confirm({
+        title: `${t("people.deactivate")} — ${person.full_name}`,
+        body: t("people.deactivateConfirm"),
+        confirmLabel: t("people.deactivate"),
+        destructive: true,
+      });
+      if (!ok) return;
+    }
+    setBusy(true);
+    try {
+      if (deactivating) await api.delete(`/users/${person.id}`);
+      else await api.patch(`/users/${person.id}`, { is_active: true });
+      refresh();
+    } catch (error: any) {
+      toast.error(error?.message ?? "Failed");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  if (!manages) {
+    return (
+      <div className="flex items-center gap-2">
+        {person.is_active === false ? <Badge tone="cancelled">{t("people.deactivate")}</Badge> : null}
+        <Badge>{humanize(person.role)}</Badge>
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex flex-wrap items-center justify-end gap-2">
+      {person.is_active === false ? (
+        <Badge tone="cancelled">{t("people.deactivate")}</Badge>
+      ) : null}
+      {editing ? (
+        <div className="flex items-center gap-1.5">
+          <SimpleSelect
+            value={role}
+            onValueChange={setRole}
+            className="w-44"
+            options={options.map((item) => ({ value: item.key, label: item.label }))}
+          />
+          <Button size="sm" variant="primary" loading={busy} onClick={saveRole}>
+            {t("action.save")}
+          </Button>
+          <Button size="sm" variant="ghost" onClick={() => { setRole(person.role); setEditing(false); }}>
+            {t("action.cancel")}
+          </Button>
+        </div>
+      ) : (
+        <Button size="sm" variant="secondary" onClick={() => setEditing(true)}>
+          <Badge>{humanize(person.role)}</Badge>
+          <span className="text-muted">{t("people.changeRole")}</span>
+        </Button>
+      )}
+      {can("users.manage") ? (
+        <Button size="sm" variant="ghost" loading={busy} onClick={toggleActive}>
+          {person.is_active === false ? t("people.reactivate") : t("people.deactivate")}
+        </Button>
+      ) : null}
     </div>
   );
 }

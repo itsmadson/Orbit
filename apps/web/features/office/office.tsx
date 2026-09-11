@@ -16,7 +16,7 @@ import type { Request, WorkflowDefinition } from "@/lib/types";
 import { MetricCard, PageHeader, Section } from "@/components/shared/page";
 import { Column, DataTable, FilterChips, Toolbar } from "@/components/shared/data";
 import { Comments, DetailRow, LoadingPanel, RelatedPanel } from "@/components/shared/entity";
-import { Avatar, Badge, EmptyState, Skeleton, StatusBadge, Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/misc";
+import { Avatar, Badge, EmptyState, Skeleton, StatusBadge, Tabs, TabsContent, TabsList, TabsTrigger, TimeAgo } from "@/components/ui/misc";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogFooter, DialogHeader } from "@/components/ui/dialog";
 import { Field, Input, Textarea } from "@/components/ui/input";
@@ -137,7 +137,7 @@ function RequestList({ data, loading }: { data?: Request[]; loading?: boolean })
             <div className="min-w-0 flex-1">
               <p className="truncate text-[13px]">{request.title}</p>
               <p className="text-[11px] text-faint">
-                {request.requester?.full_name} · {relativeTime(request.created_at, locale)}
+                {request.requester?.full_name} · {<TimeAgo value={request.created_at} />}
               </p>
             </div>
             {request.awaiting_me ? (
@@ -502,7 +502,7 @@ export function RequestDetail({ requestId }: { requestId: string }) {
                             {approval.approver?.full_name ?? "—"} · {approval.status}
                             {approval.comment ? ` — “${approval.comment}”` : ""}
                             {approval.decided_at
-                              ? ` · ${relativeTime(approval.decided_at, locale)}`
+                              ? ` · ${<TimeAgo value={approval.decided_at} />}`
                               : ""}
                           </p>
                         ))}

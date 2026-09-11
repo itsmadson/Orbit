@@ -13,7 +13,7 @@ import type { Doc } from "@/lib/types";
 import { PageHeader, Section } from "@/components/shared/page";
 import { Column, DataTable, FilterChips, SearchInput, Toolbar } from "@/components/shared/data";
 import { Attachments, Comments, DetailRow, LoadingPanel, RelatedPanel } from "@/components/shared/entity";
-import { Avatar, Badge, EmptyState, Skeleton, StatusBadge, Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/misc";
+import { Avatar, Badge, EmptyState, Skeleton, StatusBadge, Tabs, TabsContent, TabsList, TabsTrigger, TimeAgo } from "@/components/ui/misc";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogFooter, DialogHeader } from "@/components/ui/dialog";
 import { Field, Input } from "@/components/ui/input";
@@ -158,7 +158,7 @@ function DocRow({ doc }: { doc: Doc }) {
         </div>
         <Badge>{humanize(doc.doc_type)}</Badge>
         <span className="hidden shrink-0 text-[11px] text-faint sm:block">
-          {relativeTime(doc.updated_at, locale)}
+          {<TimeAgo value={doc.updated_at} />}
         </span>
       </Link>
     </li>
@@ -504,7 +504,7 @@ export function DocumentDetail({ documentId }: { documentId: string }) {
                     <span className="font-mono text-[11px] text-muted">v{version.version}</span>
                     <span className="flex-1 truncate">{version.change_note}</span>
                     <span className="text-[11px] text-faint">
-                      {version.author?.full_name} · {relativeTime(version.created_at, locale)}
+                      {version.author?.full_name} · {<TimeAgo value={version.created_at} />}
                     </span>
                   </li>
                 ))}

@@ -11,7 +11,7 @@ import { useI18n, useT } from "@/lib/i18n";
 import { useSession } from "@/components/providers";
 import { MetricCard, PageHeader, Section } from "@/components/shared/page";
 import { ActivityFeed } from "@/components/shared/entity";
-import { Avatar, DeltaPill, Progress, Skeleton, StatusBadge } from "@/components/ui/misc";
+import { Avatar, DeltaPill, Progress, Skeleton, StatusBadge, TimeAgo } from "@/components/ui/misc";
 import { cn, formatCurrency, formatDate, formatNumber, humanize, isOverdue, relativeTime } from "@/lib/utils";
 
 type Dashboard = {
@@ -379,7 +379,7 @@ export function DashboardView() {
                     <Gavel className="mt-0.5 h-3.5 w-3.5 shrink-0 text-faint" />
                     <div className="min-w-0 flex-1">
                       <p className="truncate text-[13px]">{decision.title}</p>
-                      <p className="text-[11px] text-faint">{relativeTime(decision.created_at, locale)}</p>
+                      <p className="text-[11px] text-faint">{<TimeAgo value={decision.created_at} />}</p>
                     </div>
                     <StatusBadge status={decision.status} />
                   </Link>

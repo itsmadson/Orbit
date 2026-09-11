@@ -15,6 +15,7 @@ import { Attachments, Comments, DetailRow, LoadingPanel, RelatedPanel } from "@/
 import { ActivityFeed } from "@/components/shared/entity";
 import { Avatar, Badge, StatusBadge, Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/misc";
 import { Button } from "@/components/ui/button";
+import { useConfirm } from "@/components/ui/confirm";
 import { SimpleSelect } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { UserPicker } from "@/components/shared/pickers";
@@ -49,6 +50,7 @@ export function TaskDetail({ taskId }: { taskId: string }) {
     }
   };
 
+  const confirm = useConfirm();
   const remove = useRemove((id) => `/tasks/${id}`, {
     invalidate: ["/tasks", "/tasks/board"],
     success: "Task deleted",
@@ -80,7 +82,19 @@ export function TaskDetail({ taskId }: { taskId: string }) {
         }
         actions={
           canWrite ? (
-            <Button variant="ghost" size="icon" onClick={() => remove.mutate(task.id)}>
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={async () => {
+                const ok = await confirm({
+                  title: `${t("action.delete")} ${task.key}`,
+                  body: t("tasks.deleteConfirm").replace("{title}", task.title),
+                  confirmLabel: t("action.delete"),
+                  destructive: true,
+                });
+                if (ok) remove.mutate(task.id);
+              }}
+            >
               <Trash2 className="h-4 w-4" />
             </Button>
           ) : null

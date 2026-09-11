@@ -11,7 +11,7 @@ import { useSession } from "@/components/providers";
 import { MetricCard, PageHeader, Section } from "@/components/shared/page";
 import { Column, DataTable, FilterChips, SearchInput, Toolbar } from "@/components/shared/data";
 import { DetailRow, LoadingPanel, RelatedPanel } from "@/components/shared/entity";
-import { Avatar, Badge, EmptyState, Progress, StatusBadge, Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/misc";
+import { Avatar, Badge, EmptyState, Progress, StatusBadge, Tabs, TabsContent, TabsList, TabsTrigger, TimeAgo } from "@/components/ui/misc";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogFooter, DialogHeader } from "@/components/ui/dialog";
 import { Field, Input, Textarea } from "@/components/ui/input";
@@ -676,7 +676,7 @@ export function CustomerDetail({ customerId }: { customerId: string }) {
                       <Badge>{activity.type}</Badge> <span className="ms-1">{activity.subject}</span>
                     </p>
                     {activity.body ? <p className="text-[12px] text-muted">{activity.body}</p> : null}
-                    <p className="text-[11px] text-faint">{relativeTime(activity.created_at, locale)}</p>
+                    <p className="text-[11px] text-faint">{<TimeAgo value={activity.created_at} />}</p>
                   </div>
                 </li>
               ))}

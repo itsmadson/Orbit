@@ -12,13 +12,13 @@ import type { Decision } from "@/lib/types";
 import { PageHeader, Section } from "@/components/shared/page";
 import { FilterChips, SearchInput, Toolbar } from "@/components/shared/data";
 import { Comments, DetailRow, LoadingPanel, RelatedPanel } from "@/components/shared/entity";
-import { Avatar, Badge, EmptyState, Skeleton, StatusBadge } from "@/components/ui/misc";
+import { Avatar, Badge, EmptyState, Skeleton, StatusBadge, TimeAgo } from "@/components/ui/misc";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogFooter, DialogHeader } from "@/components/ui/dialog";
 import { Field, Input, Textarea } from "@/components/ui/input";
 import { SimpleSelect } from "@/components/ui/select";
 import { MultiUserPicker, useProjects } from "@/components/shared/pickers";
-import { cn, formatDate, humanize, relativeTime } from "@/lib/utils";
+import { cn, formatDate, humanize } from "@/lib/utils";
 
 const STATUSES = ["proposed", "discussion", "decided", "revisited", "archived"];
 
@@ -104,9 +104,11 @@ export function DecisionsView() {
                 ) : null}
                 {decision.project_name ? <Badge>{decision.project_name}</Badge> : null}
                 <span className="ms-auto">
-                  {decision.decided_at
-                    ? formatDate(decision.decided_at, locale)
-                    : relativeTime(decision.created_at, locale)}
+                  {decision.decided_at ? (
+                    formatDate(decision.decided_at, locale)
+                  ) : (
+                    <TimeAgo value={decision.created_at} />
+                  )}
                 </span>
               </div>
             </Link>

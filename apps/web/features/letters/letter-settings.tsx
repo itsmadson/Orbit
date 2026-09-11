@@ -12,6 +12,7 @@ import type { Letterhead, LetterNumbering, LetterTemplate } from "@/lib/types";
 import { Section } from "@/components/shared/page";
 import { Badge, EmptyState, Separator } from "@/components/ui/misc";
 import { Button } from "@/components/ui/button";
+import { useConfirm } from "@/components/ui/confirm";
 import { Field, Input, Textarea } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 import { SimpleSelect } from "@/components/ui/select";
@@ -630,6 +631,7 @@ function TemplatesCard({
   onChanged: () => void;
 }) {
   const t = useT();
+  const confirm = useConfirm();
   const [open, setOpen] = React.useState(false);
   const [draft, setDraft] = React.useState({
     name: "",
@@ -653,7 +655,14 @@ function TemplatesCard({
     }
   }
 
-  async function remove(id: string) {
+  async function remove(id: string, name: string) {
+    const ok = await confirm({
+      title: t("letters.deleteTemplate"),
+      body: t("letters.deleteTemplateBody").replace("{name}", name),
+      confirmLabel: t("action.delete"),
+      destructive: true,
+    });
+    if (!ok) return;
     await api.delete(`/letter-templates/${id}`);
     onChanged();
   }
@@ -737,7 +746,7 @@ function TemplatesCard({
                 <Button
                   size="icon-sm"
                   variant="ghost"
-                  onClick={() => remove(template.id)}
+                  onClick={() => remove(template.id, template.name)}
                   aria-label={t("action.delete")}
                 >
                   <Trash2 className="h-3.5 w-3.5" />

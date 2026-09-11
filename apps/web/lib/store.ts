@@ -1,5 +1,6 @@
 "use client";
 
+import * as React from "react";
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 
@@ -37,6 +38,23 @@ export const useUi = create<UiState>()(
         sidebarCollapsed: state.sidebarCollapsed,
         collapsedGroups: state.collapsedGroups,
       }),
+      // Without this, persist reads localStorage during the first client render
+      // while the server rendered the defaults — so once anyone collapsed the
+      // sidebar, every page load afterwards failed hydration. Rehydration is
+      // deferred to useHydrateUi(), after mount.
+      skipHydration: true,
     },
   ),
 );
+
+/**
+ * Applies the stored sidebar state once the client has mounted.
+ *
+ * Mount it once, at the shell. Before it runs the UI shows its defaults, which
+ * is exactly what the server rendered — so hydration matches.
+ */
+export function useHydrateUi() {
+  React.useEffect(() => {
+    void useUi.persist.rehydrate();
+  }, []);
+}

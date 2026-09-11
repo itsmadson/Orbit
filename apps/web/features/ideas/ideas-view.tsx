@@ -11,7 +11,7 @@ import { useSession } from "@/components/providers";
 import type { Idea } from "@/lib/types";
 import { PageHeader, Section } from "@/components/shared/page";
 import { FilterChips, SearchInput, Toolbar } from "@/components/shared/data";
-import { Badge, EmptyState, Skeleton, StatusBadge, Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/misc";
+import { Badge, EmptyState, Skeleton, StatusBadge, Tabs, TabsContent, TabsList, TabsTrigger, TimeAgo } from "@/components/ui/misc";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogFooter, DialogHeader } from "@/components/ui/dialog";
 import { Field, Input, Textarea } from "@/components/ui/input";
@@ -199,7 +199,7 @@ export function IdeaCard({ idea, compact }: { idea: Idea; compact?: boolean }) {
             <span className="truncate">{idea.author.full_name}</span>
           </>
         ) : null}
-        <span className="ms-auto">{relativeTime(idea.created_at, locale)}</span>
+        <span className="ms-auto">{<TimeAgo value={idea.created_at} />}</span>
       </div>
     </Link>
   );

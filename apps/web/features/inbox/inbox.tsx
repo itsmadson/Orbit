@@ -10,7 +10,7 @@ import type { Notification } from "@/lib/types";
 import { PageHeader } from "@/components/shared/page";
 import { ErrorState, Pagination, SearchInput } from "@/components/shared/data";
 import { ENTITY_ICONS } from "@/components/shared/entity";
-import { Avatar, EmptyState, Skeleton } from "@/components/ui/misc";
+import { Avatar, EmptyState, Skeleton, TimeAgo } from "@/components/ui/misc";
 import { Button } from "@/components/ui/button";
 import { cn, relativeTime } from "@/lib/utils";
 import { useDebounced } from "@/lib/hooks";
@@ -160,7 +160,7 @@ export function InboxView() {
                         <p className="mt-0.5 line-clamp-2 text-[12px] text-muted">{item.body}</p>
                       ) : null}
                       <p className="mt-0.5 text-[11px] text-faint">
-                        {item.category} · {relativeTime(item.created_at, locale)}
+                        {item.category} · {<TimeAgo value={item.created_at} />}
                       </p>
                     </div>
                     {item.priority === "high" ? (

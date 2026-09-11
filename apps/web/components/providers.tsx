@@ -5,6 +5,7 @@ import { createContext, useContext, useMemo, useState } from "react";
 import { Toaster } from "sonner";
 import { I18nProvider, type Locale } from "@/lib/i18n";
 import { TooltipProvider } from "@/components/ui/misc";
+import { ConfirmProvider } from "@/components/ui/confirm";
 import type { SessionUser } from "@/lib/server";
 
 type SessionContextValue = SessionUser & {
@@ -62,18 +63,20 @@ export function Providers({
     <QueryClientProvider client={client}>
       <I18nProvider initialLocale={locale}>
         <TooltipProvider>
-          {children}
-          <Toaster
-            position="bottom-right"
-            toastOptions={{
-              style: {
-                background: "var(--elevated)",
-                border: "1px solid var(--border)",
-                color: "var(--text)",
-                fontSize: "13px",
-              },
-            }}
-          />
+          <ConfirmProvider>
+            {children}
+            <Toaster
+              position="bottom-right"
+              toastOptions={{
+                style: {
+                  background: "var(--elevated)",
+                  border: "1px solid var(--border)",
+                  color: "var(--text)",
+                  fontSize: "13px",
+                },
+              }}
+            />
+          </ConfirmProvider>
         </TooltipProvider>
       </I18nProvider>
     </QueryClientProvider>
