@@ -9,6 +9,7 @@ import { useI18n, useT } from "@/lib/i18n";
 import { useItem } from "@/lib/hooks";
 import { useSession } from "@/components/providers";
 import { PageHeader, Section } from "@/components/shared/page";
+import { OrbitLoader } from "@/components/ui/orbit-loader";
 import { Avatar, Badge, Skeleton } from "@/components/ui/misc";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/input";
@@ -171,11 +172,9 @@ export function AiView() {
               ))
             )}
             {pending ? (
-              <div className="flex gap-3">
-                <span className="flex h-[26px] w-[26px] items-center justify-center rounded-full bg-accent-soft text-accent">
-                  <Bot className="h-3.5 w-3.5" />
-                </span>
-                <Skeleton className="h-16 flex-1" />
+              <div className="flex items-center gap-3">
+                <OrbitLoader size={26} />
+                <span className="text-[12px] text-muted">{t("ai.thinking")}</span>
               </div>
             ) : null}
             <div ref={endRef} />

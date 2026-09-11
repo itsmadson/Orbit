@@ -7,6 +7,7 @@ import { useT } from "@/lib/i18n";
 import { Button } from "@/components/ui/button";
 import { Field, Input } from "@/components/ui/input";
 import { OrbitMark } from "@/components/layout/sidebar";
+import { OrbitLoader } from "@/components/ui/orbit-loader";
 
 const DEMO_ACCOUNTS = [
   { email: "admin@orbit.dev", role: "Company admin" },
@@ -116,7 +117,14 @@ export function LoginForm() {
                 {error}
               </p>
             ) : null}
-            <Button type="submit" variant="primary" size="lg" className="w-full" loading={loading}>
+            <Button
+              type="submit"
+              variant="primary"
+              size="lg"
+              className="w-full"
+              disabled={loading}
+            >
+              {loading ? <OrbitLoader size={18} className="text-accent-fg" /> : null}
               {loading ? t("auth.signingIn") : t("auth.signIn")}
               {!loading ? <ArrowRight className="h-4 w-4 rtl:rotate-180" /> : null}
             </Button>

@@ -402,5 +402,6 @@
   "letters.bannerHeight": "Height (mm)",
   "letters.fullBleed": "Span the full page width",
   "letters.removeImage": "Remove",
-  "letters.unnumbered": "Not numbered"
+  "letters.unnumbered": "Not numbered",
+  "ai.thinking": "Searching your records…"
 }

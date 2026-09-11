@@ -11,6 +11,7 @@ import {
 import { toast } from "sonner";
 import { api } from "@/lib/api";
 import { useT } from "@/lib/i18n";
+import { OrbitLoading } from "@/components/ui/orbit-loader";
 import { cn, formatDate, relativeTime } from "@/lib/utils";
 import { Avatar, EmptyState, Skeleton, StatusBadge } from "@/components/ui/misc";
 import { Button } from "@/components/ui/button";
@@ -316,10 +317,6 @@ export function DetailRow({
   );
 }
 
-export function LoadingPanel() {
-  return (
-    <div className="flex items-center justify-center py-16 text-muted">
-      <Loader2 className="h-4 w-4 animate-spin" />
-    </div>
-  );
+export function LoadingPanel({ label }: { label?: string }) {
+  return <OrbitLoading label={label} />;
 }

@@ -308,6 +308,45 @@ textarea,
   }
 }
 
+/* ---------------------------------------------------------------------------
+   The orbit loader: satellites travelling two tilted rings.
+   `offset-path` carries the ellipse, so the motion is the real curve rather
+   than a rotation faking one.
+--------------------------------------------------------------------------- */
+.orbit-loader .orbit-sat {
+  offset-path: path("M 4,24 a 20,9.5 0 1,1 40,0 a 20,9.5 0 1,1 -40,0");
+  offset-rotate: 0deg;
+  offset-distance: 0%;
+}
+.orbit-loader .orbit-sat-a {
+  animation: orbit-travel 3.2s linear infinite;
+}
+.orbit-loader .orbit-sat-b {
+  animation: orbit-travel 4.7s linear infinite reverse;
+}
+.orbit-loader .orbit-halo {
+  transform-origin: 24px 24px;
+  animation: orbit-breathe 3.2s ease-in-out infinite;
+}
+
+@keyframes orbit-travel {
+  to {
+    offset-distance: 100%;
+  }
+}
+
+@keyframes orbit-breathe {
+  0%,
+  100% {
+    opacity: 0.7;
+    transform: scale(0.95);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.1);
+  }
+}
+
 @keyframes orbit-in-up {
   from {
     opacity: 0;
@@ -330,8 +369,17 @@ textarea,
 
 @media (prefers-reduced-motion: reduce) {
   .animate-in-up,
-  .animate-fade {
+  .animate-fade,
+  .orbit-loader .orbit-sat,
+  .orbit-loader .orbit-halo {
     animation: none;
+  }
+  /* Parked rather than hidden, so the mark still reads as itself. */
+  .orbit-loader .orbit-sat-a {
+    offset-distance: 12%;
+  }
+  .orbit-loader .orbit-sat-b {
+    offset-distance: 63%;
   }
   * {
     transition-duration: 0.01ms !important;
