@@ -8,6 +8,7 @@ import * as TooltipPrimitive from "@radix-ui/react-tooltip";
 import * as SwitchPrimitive from "@radix-ui/react-switch";
 import * as CheckboxPrimitive from "@radix-ui/react-checkbox";
 import { ArrowDownRight, ArrowUpRight, Check } from "lucide-react";
+import { useT } from "@/lib/i18n";
 import { cn, humanize, initials, STATUS_TONES } from "@/lib/utils";
 
 /* ------------------------------------------------------------------ avatar */
@@ -99,10 +100,15 @@ export function Badge({
 }
 
 export function StatusBadge({ status, className }: { status?: string | null; className?: string }) {
+  const t = useT();
   if (!status) return null;
+  // Translated when the locale has a name for this state, humanised otherwise,
+  // so a new status never renders as a missing key.
+  const key = `status.${status}`;
+  const label = t(key);
   return (
     <Badge tone={status} className={className}>
-      {humanize(status)}
+      {label === key ? humanize(status) : label}
     </Badge>
   );
 }

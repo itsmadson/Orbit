@@ -16,6 +16,7 @@ DOMAINS = [
     "company", "users", "departments", "projects", "tasks", "ideas", "brainstorm",
     "rd", "documents", "decisions", "meetings", "workflows", "approvals",
     "finance", "hr", "crm", "assets", "procurement", "goals", "analytics",
+    "letters",
     "ai", "audit", "integrations", "settings",
 ]
 
@@ -32,7 +33,8 @@ _EVERYTHING = _all(DOMAINS, READ, WRITE, MANAGE)
 
 _COMMON_READ = _all(
     ["company", "users", "departments", "projects", "tasks", "ideas", "brainstorm",
-     "rd", "documents", "decisions", "meetings", "workflows", "goals", "assets", "ai"],
+     "rd", "documents", "decisions", "meetings", "workflows", "goals", "assets", "ai",
+     "letters"],
     READ,
 )
 
@@ -48,9 +50,9 @@ ROLE_PERMISSIONS: dict[str, set[str]] = {
         _COMMON_READ
         | _all(["projects", "tasks", "ideas", "brainstorm", "documents", "decisions",
                 "meetings", "workflows", "goals", "rd"], WRITE)
-        | _all(["approvals"], READ, WRITE)
+        | _all(["approvals", "letters"], READ, WRITE)
         | _all(["hr", "finance", "analytics", "crm", "audit"], READ)
-        | {"projects.manage", "tasks.manage", "goals.manage"}
+        | {"projects.manage", "tasks.manage", "goals.manage", "letters.manage"}
     ),
     "project_manager": (
         _COMMON_READ
@@ -61,14 +63,14 @@ ROLE_PERMISSIONS: dict[str, set[str]] = {
     "finance": (
         _COMMON_READ
         | _all(["finance", "procurement", "assets"], READ, WRITE, MANAGE)
-        | _all(["approvals"], READ, WRITE)
+        | _all(["approvals", "letters"], READ, WRITE)
         | _all(["crm", "analytics", "audit"], READ)
         | _all(["tasks", "documents", "meetings", "workflows"], WRITE)
     ),
     "hr": (
         _COMMON_READ
         | _all(["hr", "users"], READ, WRITE, MANAGE)
-        | _all(["approvals"], READ, WRITE)
+        | _all(["approvals", "letters"], READ, WRITE)
         | _all(["departments", "analytics", "audit"], READ)
         | _all(["tasks", "documents", "meetings", "workflows", "goals"], WRITE)
     ),

@@ -12,3 +12,8 @@ python-multipart==0.0.20
 email-validator==2.2.0
 httpx==0.28.1
 pgvector==0.3.6
+
+# Secretariat: Jalali calendar, PDF and DOCX rendering for official letters
+jdatetime==5.0.0
+weasyprint==63.1
+python-docx==1.1.2

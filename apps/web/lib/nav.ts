@@ -1,6 +1,6 @@
 import {
   Atom, Banknote, Bot, Boxes, Building2, Calendar, CalendarDays, CheckSquare, ClipboardCheck,
-  ClipboardList, FileText, FlaskConical, FolderKanban, Gavel, Home, Inbox, Landmark, LayoutGrid,
+  ClipboardList, FileText, FlaskConical, FolderKanban, Gavel, Home, Inbox, Landmark, LayoutGrid, Mail,
   Library, LineChart, Lightbulb, Map, Package, Settings, Share2, Sparkles, Target, Users, Workflow,
 } from "lucide-react";
 
@@ -59,6 +59,7 @@ export const NAV: NavGroup[] = [
     labelKey: "nav.group.operations",
     items: [
       { href: "/office", labelKey: "nav.office", icon: LayoutGrid, permission: "workflows.read", shortcut: "o" },
+      { href: "/letters", labelKey: "nav.letters", icon: Mail, permission: "letters.read", shortcut: "l" },
       { href: "/workflows", labelKey: "nav.workflows", icon: Workflow, permission: "workflows.read" },
       { href: "/approvals", labelKey: "nav.approvals", icon: ClipboardCheck, permission: "workflows.read", shortcut: "a" },
       { href: "/meetings", labelKey: "nav.meetings", icon: Calendar, permission: "meetings.read", shortcut: "m" },
@@ -114,6 +115,7 @@ export const QUICK_CREATE = [
   { key: "idea", labelKey: "ideas.new", href: "/ideas?create=1", permission: "ideas.write", icon: Lightbulb },
   { key: "meeting", labelKey: "meetings.new", href: "/meetings?create=1", permission: "meetings.write", icon: Calendar },
   { key: "document", labelKey: "knowledge.newDocument", href: "/documents?create=1", permission: "documents.write", icon: FileText },
+  { key: "letter", labelKey: "letters.new", href: "/letters?create=1", permission: "letters.write", icon: Mail },
   { key: "decision", labelKey: "decisions.new", href: "/decisions?create=1", permission: "decisions.write", icon: Gavel },
   { key: "expense", labelKey: "finance.newTransaction", href: "/finance?create=1", permission: "finance.write", icon: Banknote },
   { key: "request", labelKey: "office.newRequest", href: "/office?create=1", permission: "workflows.write", icon: ClipboardList },

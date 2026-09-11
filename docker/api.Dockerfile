@@ -22,8 +22,18 @@ ENV PYTHONUNBUFFERED=1 \
     PIP_DISABLE_PIP_VERSION_CHECK=1 \
     PIP_NO_CACHE_DIR=1
 
+# WeasyPrint renders the letter PDFs; Pango/HarfBuzz do the Persian shaping
+# and bidi that a pure-Python PDF writer cannot.
 RUN apt-get update \
-    && apt-get install -y --no-install-recommends curl \
+    && apt-get install -y --no-install-recommends \
+        curl \
+        libpango-1.0-0 \
+        libpangoft2-1.0-0 \
+        libharfbuzz0b \
+        libfribidi0 \
+        libcairo2 \
+        libgdk-pixbuf-2.0-0 \
+        fontconfig \
     && rm -rf /var/lib/apt/lists/* \
     && useradd --create-home --uid 1001 orbit
 
@@ -34,6 +44,10 @@ COPY apps/api/requirements.txt .
 RUN pip install --no-index --find-links=/wheels -r requirements.txt && rm -rf /wheels
 
 COPY apps/api/ /app/
+RUN cp /app/app/assets/fonts/*.ttf /usr/local/share/fonts/ 2>/dev/null || \
+    (mkdir -p /usr/local/share/fonts && cp /app/app/assets/fonts/*.ttf /usr/local/share/fonts/) \
+    && fc-cache -f
+
 COPY docker/api-entrypoint.sh /usr/local/bin/orbit-entrypoint
 RUN chmod +x /usr/local/bin/orbit-entrypoint \
     && mkdir -p /data/files && chown -R orbit:orbit /app /data

@@ -329,6 +329,14 @@ that user could open. With no provider configured, Orbit AI answers from the
 retrieved records and says plainly that no language model is connected — the
 dashboard's "AI insights" are deterministic rules over live data, never invented.
 
+**The secretariat is Persian-first.** The letter register (دبیرخانه) mints a
+registered number from a formula the company owns — `{kind}/{year}/{seq:04}`
+yields `ص/۱۴۰۴/۰۰۱۲` — with the counter resetting on the Jalali calendar and a
+row lock so two clerks cannot take the same number. A letter is written by
+typing its text; the letterhead and template supply the header, salutation and
+closing. It exports as a PDF for the file (WeasyPrint with Pango doing the
+Persian shaping and bidi) or as a DOCX for anyone who needs to keep editing it.
+
 **i18n and RTL are structural.** Locale is a cookie read on the server, which
 sets `lang`/`dir` on `<html>`; the layout uses logical properties (`ps-*`,
 `me-*`, `start-*`) throughout, so Persian is a genuine mirror of the interface
@@ -338,8 +346,9 @@ rather than a separate set of pages.
 
 `/api/v1/` — `auth`, `users`, `departments`, `projects`, `tasks`, `sprints`,
 `ideas`, `brainstorm`, `rd`, `experiments`, `spaces`, `documents`, `decisions`,
-`meetings`, `workflows`, `requests`, `approvals`, `finance`, `crm`, `hr`,
-`assets`, `purchase-orders`, `goals`, `dashboard`, `analytics`, `ai`, `search`,
+`meetings`, `letters`, `letterheads`, `letter-templates`, `letter-numbering`,
+`workflows`, `requests`, `approvals`, `finance`, `crm`, `hr`, `assets`,
+`purchase-orders`, `goals`, `dashboard`, `analytics`, `ai`, `search`,
 `notifications`, `comments`, `attachments`, `graph`, `audit`, `integrations`.
 
 Consistent errors:

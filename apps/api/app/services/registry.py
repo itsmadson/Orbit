@@ -10,6 +10,7 @@ from app.models.identity import User
 from app.models.business import Asset, Contract, CrmCompany, Deal, Invoice, Transaction
 from app.models.innovation import BrainstormBoard, Experiment, Idea, ResearchProject
 from app.models.knowledge import Decision, Document
+from app.models.office import Letter
 from app.models.ops import Meeting, WorkflowRequest
 from app.models.people import Goal
 from app.models.work import Project, Task
@@ -72,6 +73,9 @@ REGISTRY: dict[str, EntitySpec] = {
                    ["title"], "workflows.read"),
         EntitySpec("brainstorm_board", BrainstormBoard, "Brainstorm", "name", "/brainstorm/{id}",
                    "sparkles", ["name", "description"], "brainstorm.read"),
+        EntitySpec("letter", Letter, "Letter", "subject", "/letters/{id}", "mail",
+                   ["subject", "number", "body", "recipient_name", "recipient_org"],
+                   "letters.read"),
         EntitySpec("user", User, "Person", "full_name", "/employees/{id}", "user",
                    ["full_name", "email", "title"], "users.read", status_field=None),
     ]

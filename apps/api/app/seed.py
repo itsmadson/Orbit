@@ -27,6 +27,7 @@ from app.models.innovation import (
     BrainstormBoard, BrainstormCard, Experiment, Idea, IdeaVote, ResearchProject,
 )
 from app.models.knowledge import Decision, Document, DocumentVersion, WikiSpace
+from app.models.office import Letter, Letterhead, LetterNumbering, LetterTemplate
 from app.models.ops import (
     ActionItem, Meeting, MeetingParticipant, WorkflowDefinition, WorkflowRequest,
 )
@@ -35,7 +36,7 @@ from app.models.people import (
 )
 from app.models.system import AuditLog, Comment, Notification, Relation
 from app.models.work import Milestone, Project, ProjectMember, Sprint, Task, TaskDependency
-from app.services import graph, workflow
+from app.services import graph, letters as letter_svc, workflow
 
 logger = logging.getLogger("orbit.seed")
 rng = random.Random(7)
@@ -139,6 +140,7 @@ def seed(db: Session) -> None:
     meetings = _seed_meetings(db, company, users, projects, tasks)
     _seed_decisions(db, company, users, projects, meetings, documents)
     _seed_workflows(db, company, users, projects)
+    _seed_secretariat(db, company, users, projects)
     customers = _seed_crm(db, company, users, projects)
     _seed_finance(db, company, users, projects, customers)
     _seed_assets(db, company, users)
@@ -1020,6 +1022,228 @@ CUSTOMER_SPECS = [
     ("Juniper Media", "Media", "lead", 45000, "Portugal", "marcus@orbit.dev"),
     ("Ardent Manufacturing", "Manufacturing", "lead", 150000, "Poland", "sales@orbit.dev"),
 ]
+
+
+LETTER_TEMPLATES = [
+    {
+        "name": "نامه اداری عمومی",
+        "description": "الگوی پایه برای مکاتبات برون‌سازمانی.",
+        "kind": "outgoing",
+        "subject": "{{subject}}",
+        "salutation": "جناب آقای/سرکار خانم {{recipient}}",
+        "closing": "با تشکر و احترام",
+        "variables": ["recipient", "recipient_title", "subject"],
+        "is_default": True,
+        "body": "<p>با سلام و احترام،</p>",
+    },
+    {
+        "name": "گواهی اشتغال به کار",
+        "description": "برای ارائه به بانک، سفارت یا سازمان‌های دیگر.",
+        "kind": "outgoing",
+        "subject": "گواهی اشتغال به کار",
+        "salutation": "به: {{recipient_org}}",
+        "closing": "این گواهی صرفاً جهت اطلاع صادر شده و فاقد هرگونه ارزش دیگری است.",
+        "variables": ["recipient_org", "employee", "position", "start_date"],
+        "body": (
+            "<p>بدین‌وسیله گواهی می‌شود جناب آقای/سرکار خانم {{employee}} با سمت "
+            "{{position}} از تاریخ {{start_date}} در این شرکت مشغول به کار می‌باشند.</p>"
+        ),
+    },
+    {
+        "name": "دعوت به جلسه",
+        "description": "دعوت‌نامه رسمی برای جلسات درون‌سازمانی و برون‌سازمانی.",
+        "kind": "internal",
+        "subject": "دعوت به جلسه {{meeting}}",
+        "salutation": "جناب آقای/سرکار خانم {{recipient}}",
+        "closing": "خواهشمند است حضور خود را تأیید فرمایید.",
+        "variables": ["recipient", "meeting", "date", "place"],
+        "body": (
+            "<p>با سلام،</p><p>بدین‌وسیله از جنابعالی دعوت می‌شود در جلسه {{meeting}} "
+            "که در تاریخ {{date}} در {{place}} برگزار می‌گردد حضور به هم رسانید.</p>"
+        ),
+    },
+    {
+        "name": "پاسخ به استعلام",
+        "description": "پاسخ رسمی به نامه یا استعلام دریافتی.",
+        "kind": "outgoing",
+        "subject": "پاسخ به نامه شماره {{their_number}}",
+        "salutation": "جناب آقای/سرکار خانم {{recipient}}",
+        "closing": "با احترام",
+        "variables": ["recipient", "their_number"],
+        "body": "<p>با سلام و احترام،</p><p>بازگشت به نامه شماره {{their_number}}،</p>",
+    },
+]
+
+
+def _seed_secretariat(db: Session, company: Company, users, projects) -> None:
+    """The letter register: one letterhead, a numbering formula, templates and
+    a handful of letters that already carry registered numbers."""
+    letterhead = Letterhead(
+        company_id=company.id, name="سربرگ رسمی", is_default=True,
+        org_name="شرکت اوربیت", org_name_secondary="Orbit Demo Company",
+        org_subtitle="مدیریت یکپارچه سازمان",
+        address="تهران، خیابان ولیعصر، پلاک ۱۲۰۴", phone="۰۲۱-۹۱۰۰۰۱۰۰",
+        email="office@orbit.dev", website="orbit.dev", postal_code="۱۵۱۴۷۳۳۱۱۱",
+        paper="A4", direction="rtl", language="fa",
+        font_family="Vazirmatn", font_size_pt=12, accent_color="#f4511e",
+    )
+    db.add(letterhead)
+
+    numbering = LetterNumbering(
+        company_id=company.id, name="شماره‌گذاری پیش‌فرض", is_default=True,
+        pattern="{kind}/{year}/{seq:04}", prefix="", calendar="jalali", digits="fa",
+        reset="yearly", scope="per_kind", start_at=1, separator="/",
+    )
+    db.add(numbering)
+    db.flush()
+
+    templates = {}
+    for spec in LETTER_TEMPLATES:
+        template = LetterTemplate(
+            company_id=company.id, letterhead_id=letterhead.id,
+            created_by_id=users["ops@orbit.dev"].id, language="fa", **spec,
+        )
+        db.add(template)
+        db.flush()
+        templates[spec["name"]] = template
+
+    letter_specs = [
+        {
+            "kind": "outgoing", "status": "sent", "days": 12,
+            "subject": "درخواست همکاری در پروژه زیرساخت داده",
+            "recipient_name": "مهندس رضایی", "recipient_title": "مدیر فناوری اطلاعات",
+            "recipient_org": "شرکت مریدین هلث",
+            "template": "نامه اداری عمومی",
+            "body": (
+                "<p>با سلام و احترام،</p>"
+                "<p>پیرو مذاکرات انجام‌شده در خصوص پروژه بازطراحی زیرساخت داده، "
+                "بدین‌وسیله آمادگی این شرکت جهت همکاری در فازهای طراحی و پیاده‌سازی "
+                "اعلام می‌گردد.</p>"
+                "<p>خواهشمند است دستور فرمایید نسبت به تعیین جلسه‌ای جهت بررسی "
+                "جزئیات فنی اقدام لازم صورت پذیرد.</p>"
+            ),
+            "author": "ops@orbit.dev", "signer": "admin@orbit.dev",
+            "attachment_note": "یک برگ", "delivery": "email",
+            "project": "ATLAS",
+        },
+        {
+            "kind": "outgoing", "status": "signed", "days": 5,
+            "subject": "گواهی اشتغال به کار",
+            "recipient_org": "بانک ملت - شعبه ونک",
+            "template": "گواهی اشتغال به کار",
+            "body": (
+                "<p>بدین‌وسیله گواهی می‌شود جناب آقای لئو نواک با سمت مهندس ارشد "
+                "واسط کاربری از تاریخ ۱۴۰۲/۰۵/۱۲ در این شرکت مشغول به کار بوده و "
+                "حقوق و مزایای ایشان به‌طور ماهانه پرداخت می‌گردد.</p>"
+            ),
+            "author": "hr@orbit.dev", "signer": "hr@orbit.dev",
+            "attachment_note": "ندارد",
+        },
+        {
+            "kind": "incoming", "status": "received", "days": 9,
+            "subject": "استعلام قیمت سامانه گزارش‌ساز",
+            "recipient_name": "دبیرخانه شرکت اوربیت",
+            "recipient_org": "شرکت کسترل لجستیک",
+            "body": (
+                "<p>با سلام،</p><p>خواهشمند است قیمت و زمان‌بندی پیاده‌سازی سامانه "
+                "گزارش‌ساز مطابق مشخصات پیوست به این شرکت اعلام گردد.</p>"
+            ),
+            "author": "ops@orbit.dev", "attachment_note": "سه برگ",
+        },
+        {
+            "kind": "internal", "status": "sent", "days": 3,
+            "subject": "دعوت به جلسه بررسی مهاجرت داده",
+            "recipient_name": "اعضای تیم مهندسی",
+            "template": "دعوت به جلسه",
+            "body": (
+                "<p>با سلام،</p><p>بدین‌وسیله از همکاران گرامی دعوت می‌شود در جلسه "
+                "بررسی برنامه مهاجرت داده که روز یکشنبه ساعت ۱۰ در اتاق جلسات الف "
+                "برگزار می‌گردد حضور به هم رسانند.</p>"
+            ),
+            "author": "manager@orbit.dev", "signer": "manager@orbit.dev",
+            "delivery": "automation", "project": "ATLAS",
+        },
+        {
+            "kind": "outgoing", "status": "awaiting_signature", "days": 1,
+            "subject": "پاسخ به نامه شماره و/۱۴۰۴/۰۰۰۱",
+            "recipient_name": "خانم یانسن", "recipient_title": "مدیر تدارکات",
+            "recipient_org": "شرکت کسترل لجستیک",
+            "template": "پاسخ به استعلام",
+            "body": (
+                "<p>با سلام و احترام،</p>"
+                "<p>بازگشت به استعلام آن شرکت، به استحضار می‌رساند پیشنهاد فنی و مالی "
+                "این شرکت به پیوست ارسال می‌گردد. مدت اعتبار پیشنهاد سی روز کاری است.</p>"
+            ),
+            "author": "sales@orbit.dev", "signer": "admin@orbit.dev",
+            "attachment_note": "دوازده برگ", "follow_up": True,
+        },
+        {
+            "kind": "outgoing", "status": "draft", "days": 0,
+            "subject": "اعلام تغییر آدرس دفتر مرکزی",
+            "recipient_org": "اداره کل پست استان تهران",
+            "template": "نامه اداری عمومی",
+            "body": "<p>با سلام و احترام،</p><p>بدین‌وسیله به اطلاع می‌رساند…</p>",
+            "author": "ops@orbit.dev",
+        },
+    ]
+
+    created: list[Letter] = []
+    for spec in letter_specs:
+        template = templates.get(spec.get("template", ""))
+        author = users[spec["author"]]
+        signer = users.get(spec.get("signer", ""), None)
+        letter_date = days_ago(spec["days"])
+        letter = Letter(
+            company_id=company.id, kind=spec["kind"], status=spec["status"],
+            subject=spec["subject"], body=spec["body"],
+            salutation=(
+                f"جناب آقای/سرکار خانم {spec['recipient_name']}"
+                if spec.get("recipient_name") else f"به: {spec.get('recipient_org', '')}"
+            ),
+            closing=template.closing if template else "با تشکر",
+            letter_date=letter_date,
+            recipient_name=spec.get("recipient_name"),
+            recipient_title=spec.get("recipient_title"),
+            recipient_org=spec.get("recipient_org"),
+            sender_name=author.full_name, sender_title=author.title,
+            author_id=author.id, signer_id=signer.id if signer else None,
+            letterhead_id=letterhead.id,
+            template_id=template.id if template else None,
+            project_id=projects[spec["project"]].id if spec.get("project") else None,
+            attachment_note=spec.get("attachment_note"),
+            delivery_method=spec.get("delivery"),
+            tags=["دبیرخانه"],
+        )
+        if spec["status"] != "draft":
+            number, seq, period = letter_svc.allocate_number(
+                db, numbering=numbering, kind=letter.kind, when=letter_date,
+            )
+            letter.number = number
+            letter.number_seq = seq
+            letter.number_period = period
+            letter.registered_at = NOW - timedelta(days=spec["days"], hours=2)
+        if spec["status"] in ("signed", "sent"):
+            letter.signed_at = NOW - timedelta(days=spec["days"], hours=1)
+        if spec["status"] == "sent":
+            letter.sent_at = NOW - timedelta(days=spec["days"])
+        db.add(letter)
+        db.flush()
+        created.append(letter)
+        if template:
+            template.usage_count += 1
+        if letter.project_id:
+            graph.link(db, company_id=company.id, from_type="letter", from_id=letter.id,
+                       rel_type="relates_to", to_type="project", to_id=letter.project_id)
+
+    # The reply points at the incoming enquiry it answers.
+    incoming = next((l for l in created if l.kind == "incoming"), None)
+    reply = next((l for l in created if l.subject.startswith("پاسخ")), None)
+    if incoming and reply:
+        reply.in_reply_to_id = incoming.id
+        reply.follow_up_of = incoming.number
+        graph.link(db, company_id=company.id, from_type="letter", from_id=reply.id,
+                   rel_type="relates_to", to_type="letter", to_id=incoming.id)
+    db.flush()
 
 
 def _seed_crm(db: Session, company: Company, users, projects) -> dict:

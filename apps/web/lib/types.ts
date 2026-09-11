@@ -313,3 +313,119 @@ export type Goal = {
   child_count: number;
   children?: Goal[];
 };
+
+/* ----------------------------------------------------------------- letters */
+export type Letterhead = {
+  id: string;
+  name: string;
+  is_default: boolean;
+  org_name: string;
+  org_name_secondary?: string | null;
+  org_subtitle?: string | null;
+  logo_data_url?: string | null;
+  header_html?: string | null;
+  footer_html?: string | null;
+  address?: string | null;
+  phone?: string | null;
+  fax?: string | null;
+  email?: string | null;
+  website?: string | null;
+  postal_code?: string | null;
+  paper: string;
+  margin_top_mm: number;
+  margin_bottom_mm: number;
+  margin_x_mm: number;
+  direction: string;
+  language: string;
+  font_family: string;
+  font_size_pt: number;
+  accent_color: string;
+  signature_data_url?: string | null;
+  stamp_data_url?: string | null;
+  show_qr: boolean;
+  show_page_numbers: boolean;
+};
+
+export type LetterNumbering = {
+  id: string;
+  name: string;
+  pattern: string;
+  prefix: string;
+  kind_codes: Record<string, string>;
+  calendar: string;
+  digits: string;
+  reset: string;
+  scope: string;
+  start_at: number;
+  separator: string;
+  preview?: string | null;
+  tokens?: Record<string, string> | null;
+  counters?: { scope: string; period: string; next: number }[] | null;
+};
+
+export type LetterTemplate = {
+  id: string;
+  name: string;
+  description?: string | null;
+  kind: string;
+  language: string;
+  subject?: string | null;
+  salutation?: string | null;
+  body?: string | null;
+  closing?: string | null;
+  letterhead_id?: string | null;
+  variables: string[];
+  is_default: boolean;
+  usage_count: number;
+};
+
+export type Letter = {
+  id: string;
+  number?: string | null;
+  kind: string;
+  status: string;
+  subject: string;
+  confidentiality: string;
+  urgency: string;
+  letter_date: string;
+  letter_date_display?: string | null;
+  recipient_name?: string | null;
+  recipient_org?: string | null;
+  author?: UserRef | null;
+  signer?: UserRef | null;
+  project_id?: string | null;
+  tags: string[];
+  attachment_count: number;
+  has_pdf: boolean;
+  has_docx: boolean;
+  created_at: string;
+  updated_at: string;
+  // detail only
+  body?: string | null;
+  salutation?: string | null;
+  closing?: string | null;
+  recipient_title?: string | null;
+  recipient_address?: string | null;
+  cc?: string[];
+  sender_name?: string | null;
+  sender_title?: string | null;
+  in_reply_to_id?: string | null;
+  follow_up_of?: string | null;
+  attachment_note?: string | null;
+  letterhead_id?: string | null;
+  template_id?: string | null;
+  registered_at?: string | null;
+  signed_at?: string | null;
+  sent_at?: string | null;
+  delivery_method?: string | null;
+  number_seq?: number | null;
+};
+
+export type LetterStats = {
+  total: number;
+  by_kind: Record<string, number>;
+  by_status: Record<string, number>;
+  drafts: number;
+  awaiting_signature: number;
+  next_number?: string | null;
+};

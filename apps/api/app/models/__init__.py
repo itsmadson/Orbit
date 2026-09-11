@@ -8,6 +8,9 @@ from app.models.innovation import (
     BrainstormBoard, BrainstormCard, Experiment, Idea, IdeaContributor, IdeaVote, ResearchProject,
 )
 from app.models.knowledge import Decision, Document, DocumentVersion, WikiSpace
+from app.models.office import (
+    Letter, Letterhead, LetterNumbering, LetterSequence, LetterTemplate,
+)
 from app.models.ops import (
     ActionItem, Approval, Meeting, MeetingParticipant, WorkflowDefinition, WorkflowRequest,
 )
@@ -28,6 +31,11 @@ __all__ = [
     "Idea", "IdeaVote", "IdeaContributor", "BrainstormBoard", "BrainstormCard",
     "ResearchProject", "Experiment",
     "WikiSpace", "Document", "DocumentVersion", "Decision",
+    "Letter",
+    "Letterhead",
+    "LetterNumbering",
+    "LetterSequence",
+    "LetterTemplate",
     "Meeting", "MeetingParticipant", "ActionItem", "WorkflowDefinition",
     "WorkflowRequest", "Approval",
     "FinanceAccount", "FinanceCategory", "Vendor", "Budget", "Transaction", "Invoice",
