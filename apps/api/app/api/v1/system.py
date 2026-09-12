@@ -1,4 +1,6 @@
+import re
 import uuid
+from urllib.parse import quote
 from datetime import UTC, datetime
 from typing import Annotated
 
@@ -7,6 +9,7 @@ from fastapi.responses import StreamingResponse
 from sqlalchemy import func, or_, select
 
 from app.api.helpers import get_or_404, user_ref
+from app.core.config import settings
 from app.core.deps import CurrentUser, DbSession, can, require
 from app.core.errors import BadRequest, Forbidden, NotFound
 from app.core.pagination import Paging, as_page
@@ -131,15 +134,36 @@ def search(db: DbSession, user: CurrentUser, q: str,
 
 # ---------------------------------------------------------------- comments
 def _check_entity(db, user: User, entity_type: str, entity_id: uuid.UUID, write: bool = False):
+    """The single gate for comments, attachments and graph links.
+
+    Holding the permission is not the same as being allowed to touch *this*
+    record: the object must belong to the caller's company, and a customer
+    login is confined to its own CRM company on top of that. Every caller in
+    this module routes through here, so the check lives in one place.
+    """
     entity_spec = spec(entity_type)
     if entity_spec is None:
         raise BadRequest(f"Unknown entity type: {entity_type}")
     permission = entity_spec.permission.replace(".read", ".write" if write else ".read")
     if not can(db, user, permission):
         raise Forbidden(f"Missing permission: {permission}")
+
     obj = db.get(entity_spec.model, entity_id)
-    if obj is None:
+    if obj is None or getattr(obj, "deleted_at", None) is not None:
         raise NotFound(entity_spec.label)
+    # Never serve a record belonging to another company.
+    if getattr(obj, "company_id", None) != user.company_id:
+        raise NotFound(entity_spec.label)
+
+    if user.role == "customer":
+        # An external login reaches only its own tickets and public monitors —
+        # and learns nothing about anything else, so this is a 404 not a 403.
+        if entity_type not in ("ticket", "monitor"):
+            raise NotFound(entity_spec.label)
+        if getattr(obj, "crm_company_id", None) != user.crm_company_id:
+            raise NotFound(entity_spec.label)
+        if entity_type == "monitor" and not getattr(obj, "is_public", False):
+            raise NotFound(entity_spec.label)
     return obj
 
 
@@ -238,6 +262,13 @@ def upload_attachment(entity_type: str, entity_id: uuid.UUID, db: DbSession, use
         raise BadRequest("A filename is required")
     key = build_key(user.company_id, entity_type, file.filename)
     size = get_storage().save(key, file.file)
+    if size > settings.MAX_UPLOAD_BYTES:
+        # Written before it could be measured, so remove it again rather than
+        # leaving an orphan on disk.
+        get_storage().delete(key)
+        raise BadRequest(
+            f"File is larger than the {settings.MAX_UPLOAD_BYTES // (1024 * 1024)}MB limit"
+        )
     attachment = Attachment(
         company_id=user.company_id, entity_type=entity_type, entity_id=entity_id,
         filename=file.filename, content_type=file.content_type or "application/octet-stream",
@@ -262,9 +293,18 @@ def download_attachment(attachment_id: uuid.UUID, db: DbSession, user: CurrentUs
         raise NotFound("Attachment")
     _check_entity(db, user, attachment.entity_type, attachment.entity_id)
     stream = get_storage().open(attachment.storage_key)
+    ascii_name = re.sub(r'[^A-Za-z0-9._-]+', "-", attachment.filename).strip("-") or "download"
     return StreamingResponse(
-        stream, media_type=attachment.content_type,
-        headers={"Content-Disposition": f'attachment; filename="{attachment.filename}"'},
+        stream,
+        media_type="application/octet-stream",
+        headers={
+            "content-disposition":
+                f'attachment; filename="{ascii_name}"; '
+                f"filename*=UTF-8''{quote(attachment.filename)}",
+            # Belt and braces: never let a browser sniff its way to executing it.
+            "x-content-type-options": "nosniff",
+            "content-security-policy": "default-src 'none'; sandbox",
+        },
     )
 
 

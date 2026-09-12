@@ -19,6 +19,7 @@ from app.core.errors import BadRequest, Conflict, Forbidden, NotFound
 from app.core.pagination import Paging, as_page
 from app.models.business import CrmCompany
 from app.models.identity import User
+from app.models.system import Attachment
 from app.models.support import (
     TICKET_PRIORITIES, TICKET_SOURCES, TICKET_STATUSES, Monitor, MonitorCheck,
     MonitorIncident, Ticket, TicketMessage,
@@ -57,6 +58,10 @@ def ticket_out(db, ticket: Ticket, detail: bool = False, for_customer: bool = Fa
         "message_count": db.scalar(select(func.count(TicketMessage.id)).where(
             TicketMessage.ticket_id == ticket.id,
             *([TicketMessage.is_internal.is_(False)] if for_customer else []),
+        )) or 0,
+        "attachment_count": db.scalar(select(func.count(Attachment.id)).where(
+            Attachment.entity_type == "ticket", Attachment.entity_id == ticket.id,
+            Attachment.deleted_at.is_(None),
         )) or 0,
     }
     if detail:
@@ -342,6 +347,13 @@ def ticket_to_task(ticket_id: uuid.UUID, db: DbSession,
         key = f"{project.key}-{project.task_counter}"
     else:
         key = f"SUP-{ticket.number.split('-')[-1]}"
+    # Task keys are unique per company; step past anything already taken rather
+    # than failing the request on a collision.
+    suffix = 1
+    base = key
+    while db.scalar(select(Task.id).where(Task.company_id == user.company_id, Task.key == key)):
+        suffix += 1
+        key = f"{base}-{suffix}"
 
     task = Task(
         company_id=user.company_id, key=key, title=ticket.subject,

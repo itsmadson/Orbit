@@ -12,8 +12,9 @@ import { toast } from "sonner";
 import { api } from "@/lib/api";
 import { useT } from "@/lib/i18n";
 import { OrbitLoading } from "@/components/ui/orbit-loader";
+import { useConfirm } from "@/components/ui/confirm";
 import { CommentBody, MentionInput } from "@/components/shared/mention-input";
-import { cn, formatDate, relativeTime } from "@/lib/utils";
+import { cn, formatDate, relativeTime, formatBytes } from "@/lib/utils";
 import { Avatar, EmptyState, Skeleton, StatusBadge, TimeAgo } from "@/components/ui/misc";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/input";
@@ -142,10 +143,21 @@ type Attachment = {
   uploaded_by?: { full_name: string } | null;
 };
 
-export function Attachments({ entityType, entityId }: { entityType: string; entityId: string }) {
+export function Attachments({
+  entityType,
+  entityId,
+  canDelete = true,
+}: {
+  entityType: string;
+  entityId: string;
+  /** Off where someone may add files but not remove other people's. */
+  canDelete?: boolean;
+}) {
   const t = useT();
   const client = useQueryClient();
+  const confirm = useConfirm();
   const inputRef = React.useRef<HTMLInputElement>(null);
+  const [dragging, setDragging] = React.useState(false);
   const key = ["attachments", entityType, entityId];
 
   const { data, isLoading } = useQuery({
@@ -167,57 +179,98 @@ export function Attachments({ entityType, entityId }: { entityType: string; enti
   const remove = useMutation({
     mutationFn: (id: string) => api.delete(`/attachments/${id}`),
     onSuccess: () => client.invalidateQueries({ queryKey: key }),
+    onError: (error: any) => toast.error(error.message),
   });
 
+  /** Upload one by one so a failure names the file that failed. */
+  const send = (files: FileList | File[]) => {
+    for (const file of Array.from(files)) upload.mutate(file);
+  };
+
+  async function confirmRemove(attachment: Attachment) {
+    const ok = await confirm({
+      title: t("attachments.delete"),
+      body: attachment.filename,
+      confirmLabel: t("action.delete"),
+      destructive: true,
+    });
+    if (ok) remove.mutate(attachment.id);
+  }
+
   return (
-    <div className="space-y-2">
+    <div
+      className={cn(
+        "space-y-2 rounded-xl border border-dashed p-2 transition-colors",
+        dragging ? "border-accent/60 bg-accent-soft" : "border-transparent",
+      )}
+      onDragOver={(event) => {
+        event.preventDefault();
+        setDragging(true);
+      }}
+      onDragLeave={() => setDragging(false)}
+      onDrop={(event) => {
+        event.preventDefault();
+        setDragging(false);
+        if (event.dataTransfer.files?.length) send(event.dataTransfer.files);
+      }}
+    >
       {isLoading ? <Skeleton className="h-10 w-full" /> : null}
+
       {(data ?? []).map((attachment) => (
         <div
           key={attachment.id}
-          className="flex items-center gap-2 rounded-md border border-border bg-surface-2 px-2.5 py-1.5"
+          className="flex items-center gap-2 rounded-lg border border-border bg-surface-2 px-2.5 py-1.5"
         >
           <Paperclip className="h-3.5 w-3.5 shrink-0 text-faint" />
           <div className="min-w-0 flex-1">
-            <p className="truncate text-[13px]">{attachment.filename}</p>
+            <p className="truncate text-[13px]" title={attachment.filename}>
+              {attachment.filename}
+            </p>
             <p className="text-[11px] text-faint">
-              {(attachment.size / 1024).toFixed(0)} KB · {attachment.uploaded_by?.full_name ?? "—"}
+              {formatBytes(attachment.size)} · {attachment.uploaded_by?.full_name ?? "—"}
             </p>
           </div>
           <a
             href={`/api/orbit/attachments/${attachment.id}/download`}
-            className="rounded p-1 text-faint transition-colors hover:bg-surface hover:text-text"
+            className="rounded-lg p-1 text-faint transition-colors hover:bg-surface hover:text-text"
+            title={t("action.download")}
           >
             <Download className="h-3.5 w-3.5" />
           </a>
-          <button
-            type="button"
-            onClick={() => remove.mutate(attachment.id)}
-            className="rounded p-1 text-faint transition-colors hover:bg-surface hover:text-danger"
-          >
-            <Trash2 className="h-3.5 w-3.5" />
-          </button>
+          {canDelete ? (
+            <button
+              type="button"
+              onClick={() => confirmRemove(attachment)}
+              className="rounded-lg p-1 text-faint transition-colors hover:bg-surface hover:text-danger"
+              title={t("action.delete")}
+            >
+              <Trash2 className="h-3.5 w-3.5" />
+            </button>
+          ) : null}
         </div>
       ))}
+
       <input
         ref={inputRef}
         type="file"
+        multiple
         className="hidden"
         onChange={(event) => {
-          const file = event.target.files?.[0];
-          if (file) upload.mutate(file);
+          if (event.target.files?.length) send(event.target.files);
           event.target.value = "";
         }}
       />
       <Button
         variant="secondary"
         size="sm"
+        className="w-full"
         loading={upload.isPending}
         onClick={() => inputRef.current?.click()}
       >
         <Paperclip className="h-3.5 w-3.5" />
-        {t("action.upload")}
+        {t("attachments.add")}
       </Button>
+      <p className="text-center text-[11px] text-faint">{t("attachments.dropHint")}</p>
     </div>
   );
 }

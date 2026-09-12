@@ -105,6 +105,64 @@ ok("a ticket becomes a task", status == 200, task.get("key"))
 status, _ = call("POST", f"/tickets/{ticket_id}/to-task", admin)
 ok("but only once", status == 409, f"HTTP {status}")
 
+print(f"{CYAN}Attachments{RESET}")
+import io, mimetypes, uuid as _uuid
+
+def upload(token, entity_type, entity_id, filename, content, content_type="text/plain"):
+    """multipart/form-data by hand — no third-party client in the test."""
+    boundary = f"----orbit{_uuid.uuid4().hex}"
+    body = (
+        f"--{boundary}\r\n"
+        f'Content-Disposition: form-data; name="file"; filename="{filename}"\r\n'
+        f"Content-Type: {content_type}\r\n\r\n"
+    ).encode() + content + f"\r\n--{boundary}--\r\n".encode()
+    url = (f"{API}/attachments?"
+           + urllib.parse.urlencode({"entity_type": entity_type, "entity_id": entity_id}))
+    request = urllib.request.Request(url, method="POST", data=body)
+    request.add_header("content-type", f"multipart/form-data; boundary={boundary}")
+    request.add_header("authorization", f"Bearer {token}")
+    try:
+        with urllib.request.urlopen(request) as response:
+            return response.status, json.loads(response.read() or b"{}")
+    except urllib.error.HTTPError as error:
+        return error.code, error.read()[:200].decode(errors="replace")
+
+
+status, uploaded = upload(anna, "ticket", ticket_id, "screenshot.txt", b"error trace here")
+ok("a customer can attach a file to their ticket", status == 201, uploaded.get("filename"))
+attachment_id = uploaded.get("id")
+
+status, listing = call("GET", "/attachments", anna,
+                       params={"entity_type": "ticket", "entity_id": ticket_id})
+ok("and see it listed", status == 200 and len(listing) >= 1, f"{len(listing)} files")
+
+status, staff_listing = call("GET", "/attachments", admin,
+                             params={"entity_type": "ticket", "entity_id": ticket_id})
+ok("staff see it too", status == 200 and len(staff_listing) >= 1)
+
+# The decisive one: the other customer's ticket must be invisible even though
+# they hold support.read.
+status, _ = call("GET", "/attachments", peter,
+                 params={"entity_type": "ticket", "entity_id": ticket_id})
+ok("another customer cannot list its attachments", status == 404, f"HTTP {status}")
+
+status, _ = upload(peter, "ticket", ticket_id, "evil.txt", b"nope")
+ok("nor upload to it", status == 404, f"HTTP {status}")
+
+status, _ = call("GET", f"/attachments/{attachment_id}/download", peter)
+ok("nor download the file itself", status == 404, f"HTTP {status}")
+
+# A customer holds support.read, but a task is not theirs to read.
+_, some_task = call("GET", "/tasks", admin, params={"page_size": 1})
+task_id = some_task["items"][0]["id"]
+status, _ = call("GET", "/attachments", anna,
+                 params={"entity_type": "task", "entity_id": task_id})
+ok("a customer cannot reach a task's attachments", status in (403, 404), f"HTTP {status}")
+
+status, _ = call("GET", "/comments", anna,
+                 params={"entity_type": "task", "entity_id": task_id})
+ok("nor its comments", status in (403, 404), f"HTTP {status}")
+
 print(f"{CYAN}Monitoring{RESET}")
 status, monitors = call("GET", "/monitors", admin)
 ok("staff see every monitor", status == 200 and len(monitors["items"]) >= 4,

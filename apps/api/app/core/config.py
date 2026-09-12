@@ -45,6 +45,9 @@ class Settings(BaseSettings):
     MONITORING_ENABLED: bool = True
     MONITOR_POLL_SECONDS: int = 30
 
+    #: Ceiling for a single uploaded file.
+    MAX_UPLOAD_BYTES: int = 25 * 1024 * 1024
+
     @property
     def database_url(self) -> str:
         return (

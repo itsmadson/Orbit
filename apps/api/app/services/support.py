@@ -7,7 +7,7 @@ import logging
 from datetime import UTC, datetime, timedelta
 
 import httpx
-from sqlalchemy import func, select
+from sqlalchemy import Integer, func, select
 from sqlalchemy.orm import Session
 
 from app.models.support import (
@@ -19,11 +19,17 @@ logger = logging.getLogger("orbit.support")
 
 # ------------------------------------------------------------------- tickets
 def next_ticket_number(db: Session, company_id) -> str:
-    """Sequential per company: TKT-0001. Readable aloud on a phone call."""
-    count = db.scalar(
-        select(func.count(Ticket.id)).where(Ticket.company_id == company_id)
+    """Sequential per company: TKT-0001. Readable aloud on a phone call.
+
+    Derived from the highest number ever issued, including deleted rows —
+    counting live tickets would reissue a retired number the moment one is
+    removed, and a ticket number that comes back around is worse than useless.
+    """
+    highest = db.scalar(
+        select(func.max(func.cast(func.substr(Ticket.number, 5), Integer)))
+        .where(Ticket.company_id == company_id, Ticket.number.like("TKT-%"))
     ) or 0
-    return f"TKT-{count + 1:04d}"
+    return f"TKT-{highest + 1:04d}"
 
 
 def apply_sla(ticket: Ticket, opened_at: datetime | None = None) -> None:

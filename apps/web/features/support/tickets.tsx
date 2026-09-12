@@ -3,7 +3,7 @@
 import * as React from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { AlertTriangle, LifeBuoy, Plus, Timer, UserX } from "lucide-react";
+import { AlertTriangle, LifeBuoy, Paperclip, Plus, Timer, UserX } from "lucide-react";
 import { api } from "@/lib/api";
 import { useT } from "@/lib/i18n";
 import { useCreateParam, useDebounced, useItem, useList } from "@/lib/hooks";
@@ -32,6 +32,7 @@ export type Ticket = {
   requester?: { full_name: string } | null;
   created_at: string;
   message_count: number;
+  attachment_count?: number;
   body?: string | null;
   task_id?: string | null;
   first_response_at?: string | null;
@@ -109,8 +110,14 @@ export function TicketsView() {
             <span className="truncate font-medium text-text">{row.subject}</span>
             <SlaPill ticket={row} />
           </div>
-          <div className="truncate text-[11px] text-muted">
+          <div className="flex items-center gap-1.5 truncate text-[11px] text-muted">
             {[row.customer?.name, row.requester?.full_name].filter(Boolean).join(" · ")}
+            {row.attachment_count ? (
+              <span className="flex items-center gap-0.5 text-faint">
+                <Paperclip className="h-3 w-3" />
+                {row.attachment_count}
+              </span>
+            ) : null}
           </div>
         </div>
       ),

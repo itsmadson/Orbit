@@ -569,5 +569,9 @@
   "portal.systems": "سرویس‌ها",
   "portal.replies": "پاسخ",
   "portal.ticketHint": "مشکل را بنویسید تا پیگیری کنیم.",
-  "crm.customer": "مشتری"
+  "crm.customer": "مشتری",
+  "attachments.add": "پیوست فایل",
+  "attachments.delete": "حذف پیوست",
+  "attachments.dropHint": "یا فایل را اینجا رها کنید",
+  "attachments.title": "پیوست‌ها"
 }

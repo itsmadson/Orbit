@@ -9,7 +9,7 @@ import { useT } from "@/lib/i18n";
 import { useItem } from "@/lib/hooks";
 import { useSession } from "@/components/providers";
 import { PageHeader, Section } from "@/components/shared/page";
-import { DetailRow, RelatedPanel } from "@/components/shared/entity";
+import { Attachments, DetailRow, RelatedPanel } from "@/components/shared/entity";
 import { Avatar, Badge, StatusBadge, TimeAgo } from "@/components/ui/misc";
 import { OrbitLoading } from "@/components/ui/orbit-loader";
 import { Button } from "@/components/ui/button";
@@ -264,6 +264,11 @@ export function TicketDetail({ ticketId }: { ticketId: string }) {
                 </DetailRow>
               ) : null}
             </div>
+          </Section>
+
+          <Section title={t("attachments.title")}>
+            {/* A customer may add files but not remove staff uploads. */}
+            <Attachments entityType="ticket" entityId={data.id} canDelete={isStaff} />
           </Section>
 
           {isStaff ? <RelatedPanel entityType="ticket" entityId={data.id} /> : null}

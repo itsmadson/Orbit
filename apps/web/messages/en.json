@@ -539,5 +539,9 @@
   "portal.systems": "Systems",
   "portal.replies": "replies",
   "portal.ticketHint": "Tell us what is wrong and we will pick it up.",
-  "crm.customer": "Customer"
+  "crm.customer": "Customer",
+  "attachments.add": "Attach files",
+  "attachments.delete": "Remove attachment",
+  "attachments.dropHint": "or drop them here",
+  "attachments.title": "Attachments"
 }
