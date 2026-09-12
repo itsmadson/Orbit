@@ -1,6 +1,6 @@
 import {
-  Atom, Banknote, Bot, Boxes, Building2, Calendar, CalendarDays, CheckSquare, ClipboardCheck,
-  ClipboardList, FileText, FlaskConical, FolderKanban, Gavel, Home, Inbox, Landmark, LayoutGrid, Mail,
+  Activity, Atom, Banknote, Bot, Boxes, Building2, Calendar, CalendarDays, CheckSquare, ClipboardCheck,
+  ClipboardList, FileText, FlaskConical, FolderKanban, Gavel, Home, Inbox, Gauge, Landmark, LayoutGrid, LifeBuoy, Mail,
   Library, LineChart, Lightbulb, Map, Package, Settings, Share2, Sparkles, Target, Users, Workflow,
 } from "lucide-react";
 
@@ -33,6 +33,7 @@ export const NAV: NavGroup[] = [
       { href: "/projects", labelKey: "nav.projects", icon: FolderKanban, permission: "projects.read", shortcut: "p" },
       { href: "/tasks", labelKey: "nav.tasks", icon: CheckSquare, permission: "tasks.read", shortcut: "t" },
       { href: "/roadmaps", labelKey: "nav.roadmaps", icon: Map, permission: "projects.read" },
+      { href: "/planning", labelKey: "nav.planning", icon: Gauge, permission: "planning.read" },
     ],
   },
   {
@@ -60,6 +61,8 @@ export const NAV: NavGroup[] = [
     items: [
       { href: "/office", labelKey: "nav.office", icon: LayoutGrid, permission: "workflows.read", shortcut: "o" },
       { href: "/letters", labelKey: "nav.letters", icon: Mail, permission: "letters.read", shortcut: "l" },
+      { href: "/tickets", labelKey: "nav.tickets", icon: LifeBuoy, permission: "support.read", shortcut: "s" },
+      { href: "/monitors", labelKey: "nav.monitors", icon: Activity, permission: "monitoring.read" },
       { href: "/workflows", labelKey: "nav.workflows", icon: Workflow, permission: "workflows.read" },
       { href: "/approvals", labelKey: "nav.approvals", icon: ClipboardCheck, permission: "workflows.read", shortcut: "a" },
       { href: "/meetings", labelKey: "nav.meetings", icon: Calendar, permission: "meetings.read", shortcut: "m" },
@@ -116,6 +119,7 @@ export const QUICK_CREATE = [
   { key: "meeting", labelKey: "meetings.new", href: "/meetings?create=1", permission: "meetings.write", icon: Calendar },
   { key: "document", labelKey: "knowledge.newDocument", href: "/documents?create=1", permission: "documents.write", icon: FileText },
   { key: "letter", labelKey: "letters.new", href: "/letters?create=1", permission: "letters.write", icon: Mail },
+  { key: "ticket", labelKey: "support.new", href: "/tickets?create=1", permission: "support.write", icon: LifeBuoy },
   { key: "decision", labelKey: "decisions.new", href: "/decisions?create=1", permission: "decisions.write", icon: Gavel },
   { key: "expense", labelKey: "finance.newTransaction", href: "/finance?create=1", permission: "finance.write", icon: Banknote },
   { key: "request", labelKey: "office.newRequest", href: "/office?create=1", permission: "workflows.write", icon: ClipboardList },

@@ -357,10 +357,19 @@ export function TimeAgo({
   const [mounted, setMounted] = React.useState(false);
   React.useEffect(() => setMounted(true), []);
   if (!value) return <span className={className}>—</span>;
-  const absolute = formatDate(value, locale);
+
+  // Everything that formats a date is timezone-dependent, and the server runs
+  // UTC while the browser does not — so even the absolute form can disagree
+  // across a midnight boundary. The first render is therefore a plain slice of
+  // the ISO string, which both sides produce identically.
+  const iso = typeof value === "string" ? value.slice(0, 10) : value.toISOString().slice(0, 10);
   return (
-    <span className={className} title={title ?? absolute} suppressHydrationWarning>
-      {mounted ? relativeTime(value, locale) : absolute}
+    <span
+      className={className}
+      title={title ?? (mounted ? formatDate(value, locale) : iso)}
+      suppressHydrationWarning
+    >
+      {mounted ? relativeTime(value, locale) : iso}
     </span>
   );
 }

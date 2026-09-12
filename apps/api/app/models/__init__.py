@@ -12,6 +12,9 @@ from app.models.knowledge import Decision, Document, DocumentVersion, WikiSpace
 from app.models.office import (
     Letter, Letterhead, LetterNumbering, LetterSequence, LetterTemplate,
 )
+from app.models.support import (
+    Monitor, MonitorCheck, MonitorIncident, Ticket, TicketMessage,
+)
 from app.models.ops import (
     ActionItem, Approval, Meeting, MeetingParticipant, WorkflowDefinition, WorkflowRequest,
 )

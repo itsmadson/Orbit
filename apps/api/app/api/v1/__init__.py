@@ -2,7 +2,8 @@ from fastapi import APIRouter
 
 from app.api.v1 import (
     ai, assets, auth, crm, dashboard, finance, goals, hr, ideas, knowledge,
-    letters, meetings, projects, rd, system, tasks, users, views, workflows,
+    letters, meetings, planning, projects, rd, support, system, tasks, users, views,
+    workflows,
 )
 
 api_router = APIRouter()
@@ -23,5 +24,7 @@ api_router.include_router(assets.router)
 api_router.include_router(goals.router)
 api_router.include_router(dashboard.router)
 api_router.include_router(ai.router)
+api_router.include_router(support.router)
+api_router.include_router(planning.router)
 api_router.include_router(views.router)
 api_router.include_router(system.router)

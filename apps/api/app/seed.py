@@ -28,6 +28,7 @@ from app.models.innovation import (
 )
 from app.models.knowledge import Decision, Document, DocumentVersion, WikiSpace
 from app.models.office import Letter, Letterhead, LetterNumbering, LetterTemplate
+from app.models.support import Monitor, Ticket, TicketMessage
 from app.models.ops import (
     ActionItem, Meeting, MeetingParticipant, WorkflowDefinition, WorkflowRequest,
 )
@@ -36,7 +37,7 @@ from app.models.people import (
 )
 from app.models.system import AuditLog, Comment, Notification, Relation
 from app.models.work import Milestone, Project, ProjectMember, Sprint, Task, TaskDependency
-from app.services import graph, letters as letter_svc, workflow
+from app.services import graph, letters as letter_svc, support as support_svc, workflow
 
 logger = logging.getLogger("orbit.seed")
 rng = random.Random(7)
@@ -141,6 +142,7 @@ def seed(db: Session) -> None:
     _seed_decisions(db, company, users, projects, meetings, documents)
     _seed_workflows(db, company, users, projects)
     _seed_secretariat(db, company, users, projects)
+    _seed_support(db, company, users, projects)
     customers = _seed_crm(db, company, users, projects)
     _seed_finance(db, company, users, projects, customers)
     _seed_assets(db, company, users)
@@ -1243,6 +1245,140 @@ def _seed_secretariat(db: Session, company: Company, users, projects) -> None:
         reply.follow_up_of = incoming.number
         graph.link(db, company_id=company.id, from_type="letter", from_id=reply.id,
                    rel_type="relates_to", to_type="letter", to_id=incoming.id)
+    db.flush()
+
+
+def _seed_support(db: Session, company: Company, users, projects) -> None:
+    """Customer logins, their tickets, and uptime monitors on their systems."""
+    from app.models.business import CrmCompany
+
+    customers = {
+        c.name: c for c in db.scalars(
+            select(CrmCompany).where(CrmCompany.company_id == company.id)
+        ).all()
+    }
+    meridian = customers.get("Meridian Health")
+    kestrel = customers.get("Kestrel Logistics")
+    if not meridian or not kestrel:
+        return
+
+    password = hash_password(settings.DEMO_PASSWORD)
+    portal_people = [
+        ("Anna Weber", "anna@meridian.example", meridian, "Head of IT"),
+        ("Peter Jansen", "peter@kestrel.example", kestrel, "Operations Lead"),
+    ]
+    portal_users = {}
+    for full_name, email, customer, title in portal_people:
+        person = User(
+            company_id=company.id, email=email, password_hash=password,
+            full_name=full_name, role="customer", title=title,
+            crm_company_id=customer.id, locale="en", theme="dark",
+            avatar_color="#2d88e2", is_active=True,
+        )
+        db.add(person)
+        portal_users[email] = person
+    db.flush()
+
+    # Two point at something that actually answers, so the demo is not
+    # permanently red; one points nowhere, to show a real outage and the ticket
+    # it raises.
+    monitor_specs = [
+        ("Meridian patient portal", "http://orbit-api:8000/health", meridian, "up", 142, 0),
+        ("Meridian API gateway", "http://orbit-api:8000/api/v1/openapi.json", meridian,
+         "up", 88, 0),
+        ("Kestrel warehouse API", "https://api.kestrel.invalid/healthz", kestrel,
+         "down", None, 4),
+        ("Kestrel tracking site", "http://orbit-api:8000/health", kestrel, "up", 310, 0),
+    ]
+    monitors = {}
+    for name, url, customer, status, response_ms, failures in monitor_specs:
+        monitor = Monitor(
+            company_id=company.id, crm_company_id=customer.id, name=name, url=url,
+            interval_seconds=300, status=status, is_active=True, is_public=True,
+            last_checked_at=NOW - timedelta(minutes=rng.randint(1, 5)),
+            next_check_at=NOW + timedelta(minutes=5),
+            last_response_ms=response_ms, consecutive_failures=failures,
+            last_error="ConnectTimeout: timed out after 10s" if failures else None,
+            total_checks=rng.randint(2000, 4000),
+            failed_checks=rng.randint(1, 40) if status == "up" else rng.randint(60, 120),
+        )
+        db.add(monitor)
+        monitors[name] = monitor
+    db.flush()
+
+    ticket_specs = [
+        {
+            "subject": "Warehouse API returning 502 since 09:10",
+            "body": "Our integration is failing. Every call to /v2/shipments returns 502.",
+            "status": "open", "priority": "urgent", "customer": kestrel,
+            "requester": "peter@kestrel.example", "assignee": "dev@orbit.dev",
+            "category": "availability", "hours": 3,
+            "replies": [
+                ("dev@orbit.dev", "We can see the errors and are on it — the upstream "
+                                  "pool is saturated. Updating within the hour.", False),
+                ("dev@orbit.dev", "Root cause is the connection pool ceiling we raised "
+                                  "last sprint. Needs a config change, not a deploy.", True),
+            ],
+        },
+        {
+            "subject": "Please add two users to the reporting module",
+            "body": "We have two new analysts who need read access to reporting.",
+            "status": "pending_customer", "priority": "normal", "customer": meridian,
+            "requester": "anna@meridian.example", "assignee": "ops@orbit.dev",
+            "category": "access", "hours": 26,
+            "replies": [
+                ("ops@orbit.dev", "Happy to. Could you confirm their email addresses "
+                                  "and whether they need export rights?", False),
+            ],
+        },
+        {
+            "subject": "Invoice INV-2026-0003 does not match our PO",
+            "body": "The amount is 28,560 but our purchase order says 24,000.",
+            "status": "resolved", "priority": "high", "customer": meridian,
+            "requester": "anna@meridian.example", "assignee": "finance@orbit.dev",
+            "category": "billing", "hours": 60,
+            "replies": [
+                ("finance@orbit.dev", "You are right — the extra line was the add-on "
+                                      "module. Credit note issued today.", False),
+            ],
+        },
+        {
+            "subject": "Export to CSV times out on large date ranges",
+            "body": "Anything over three months spins and then fails.",
+            "status": "new", "priority": "normal", "customer": kestrel,
+            "requester": "peter@kestrel.example", "assignee": None,
+            "category": "bug", "hours": 1, "replies": [],
+        },
+    ]
+
+    for index, spec in enumerate(ticket_specs, start=1):
+        opened = NOW - timedelta(hours=spec["hours"])
+        ticket = Ticket(
+            company_id=company.id, number=f"TKT-{index:04d}",
+            subject=spec["subject"], body=spec["body"], status=spec["status"],
+            priority=spec["priority"], category=spec["category"], source="portal",
+            crm_company_id=spec["customer"].id,
+            requester_id=portal_users[spec["requester"]].id,
+            assignee_id=users[spec["assignee"]].id if spec["assignee"] else None,
+            created_at=opened,
+        )
+        support_svc.apply_sla(ticket, opened)
+        if spec["replies"]:
+            ticket.first_response_at = opened + timedelta(minutes=rng.randint(20, 180))
+        if spec["status"] in ("resolved", "closed"):
+            ticket.resolved_at = opened + timedelta(hours=rng.randint(2, 20))
+        db.add(ticket)
+        db.flush()
+
+        for author, body, internal in spec["replies"]:
+            db.add(TicketMessage(
+                company_id=company.id, ticket_id=ticket.id,
+                author_id=users[author].id, body=body, is_internal=internal,
+                created_at=opened + timedelta(minutes=rng.randint(20, 240)),
+            ))
+        graph.link(db, company_id=company.id, from_type="ticket", from_id=ticket.id,
+                   rel_type="relates_to", to_type="crm_company",
+                   to_id=spec["customer"].id)
     db.flush()
 
 

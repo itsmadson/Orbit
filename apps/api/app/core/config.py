@@ -41,6 +41,10 @@ class Settings(BaseSettings):
 
     RATE_LIMIT_PER_MINUTE: int = 600
 
+    #: Uptime monitoring runs in-process; turn it off for a read-only replica.
+    MONITORING_ENABLED: bool = True
+    MONITOR_POLL_SECONDS: int = 30
+
     @property
     def database_url(self) -> str:
         return (

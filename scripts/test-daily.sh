@@ -15,7 +15,7 @@ failures = 0
 def call(method, path, token=None, body=None, params=None):
     url = f"{API}{path}"
     if params:
-        url += "?" + urllib.parse.urlencode(params)
+        url += "?" + urllib.parse.urlencode(params, doseq=True)
     request = urllib.request.Request(url, method=method)
     request.add_header("content-type", "application/json")
     if token:
@@ -69,7 +69,8 @@ ok("it lands under the inbox Mentions filter", status == 200 and inbox["total"] 
    f"{inbox['total']} in filter")
 
 print(f"{CYAN}Bulk triage{RESET}")
-_, page = call("GET", "/tasks", admin, params={"page_size": 4, "status": "todo"})
+_, page = call("GET", "/tasks", admin,
+               params={"page_size": 6, "status": ["todo", "backlog", "in_progress"]})
 ids = [row["id"] for row in page["items"]][:3]
 ok("found tasks to triage", len(ids) >= 2, f"{len(ids)} tasks")
 
@@ -91,8 +92,11 @@ if len(ids) >= 2:
     status, _ = call("POST", "/tasks/bulk", admin, body={"ids": ids, "status": "nonsense"})
     ok("an unknown status is refused", status == 400, f"HTTP {status}")
 
-    status, _ = call("POST", "/tasks/bulk", dev, body={"ids": ids, "status": "done"})
+    # Deliberately not a status change: a permission check should not leave the
+    # board rearranged behind it.
+    status, _ = call("POST", "/tasks/bulk", dev, body={"ids": ids, "priority": "medium"})
     ok("bulk still respects permissions", status in (200, 403), f"HTTP {status}")
+    call("POST", "/tasks/bulk", admin, body={"ids": ids, "priority": "high"})
 
     status, _ = call("POST", "/tasks/bulk", admin, body={"ids": [], "status": "done"})
     ok("an empty selection is refused", status == 400, f"HTTP {status}")

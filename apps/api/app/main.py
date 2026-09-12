@@ -1,7 +1,8 @@
+import asyncio
 import logging
 import time
 from collections import defaultdict, deque
-from contextlib import asynccontextmanager
+from contextlib import asynccontextmanager, suppress
 
 from fastapi import FastAPI, Request
 from fastapi.exceptions import RequestValidationError
@@ -28,7 +29,26 @@ async def lifespan(app: FastAPI):
         except Exception as exc:  # database still booting
             logger.info("Waiting for database (%s/30): %s", attempt + 1, exc)
             time.sleep(2)
+
+    # Uptime monitoring runs in-process. A dedicated scheduler would be the
+    # answer at scale; for a self-hosted workspace this keeps the deployment to
+    # the same three containers.
+    monitor_task = None
+    if settings.MONITORING_ENABLED:
+        from app.core.db import SessionLocal
+        from app.services.support import monitor_loop
+
+        monitor_task = asyncio.create_task(
+            monitor_loop(SessionLocal, settings.MONITOR_POLL_SECONDS)
+        )
+        logger.info("uptime monitoring started")
+
     yield
+
+    if monitor_task:
+        monitor_task.cancel()
+        with suppress(asyncio.CancelledError):
+            await monitor_task
 
 
 app = FastAPI(

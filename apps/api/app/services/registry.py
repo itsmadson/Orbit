@@ -12,6 +12,7 @@ from app.models.innovation import BrainstormBoard, Experiment, Idea, ResearchPro
 from app.models.knowledge import Decision, Document
 from app.models.office import Letter
 from app.models.ops import Meeting, WorkflowRequest
+from app.models.support import Monitor, Ticket
 from app.models.people import Goal
 from app.models.work import Project, Task
 
@@ -76,6 +77,10 @@ REGISTRY: dict[str, EntitySpec] = {
         EntitySpec("letter", Letter, "Letter", "subject", "/letters/{id}", "mail",
                    ["subject", "number", "body", "recipient_name", "recipient_org"],
                    "letters.read"),
+        EntitySpec("ticket", Ticket, "Ticket", "subject", "/tickets/{id}", "life-buoy",
+                   ["subject", "body", "number"], "support.read"),
+        EntitySpec("monitor", Monitor, "Monitor", "name", "/monitors/{id}", "activity",
+                   ["name", "url"], "support.read"),
         EntitySpec("user", User, "Person", "full_name", "/employees/{id}", "user",
                    ["full_name", "email", "title"], "users.read", status_field=None),
     ]

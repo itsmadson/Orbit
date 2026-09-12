@@ -9,6 +9,8 @@ only mirrors the result for UX.
 ROLES = [
     "super_admin", "company_admin", "manager", "employee",
     "finance", "hr", "rd", "project_manager", "viewer",
+    #: An external login. Sees only its own CRM company, through the portal.
+    "customer",
 ]
 
 # Domains a permission can belong to.
@@ -16,7 +18,7 @@ DOMAINS = [
     "company", "users", "departments", "projects", "tasks", "ideas", "brainstorm",
     "rd", "documents", "decisions", "meetings", "workflows", "approvals",
     "finance", "hr", "crm", "assets", "procurement", "goals", "analytics",
-    "letters",
+    "letters", "support", "monitoring", "planning",
     "ai", "audit", "integrations", "settings",
 ]
 
@@ -34,7 +36,7 @@ _EVERYTHING = _all(DOMAINS, READ, WRITE, MANAGE)
 _COMMON_READ = _all(
     ["company", "users", "departments", "projects", "tasks", "ideas", "brainstorm",
      "rd", "documents", "decisions", "meetings", "workflows", "goals", "assets", "ai",
-     "letters"],
+     "letters", "support", "monitoring"],
     READ,
 )
 
@@ -44,15 +46,19 @@ _EMPLOYEE = _COMMON_READ | _all(
 )
 
 ROLE_PERMISSIONS: dict[str, set[str]] = {
+    # Deliberately tiny. Everything a customer reaches is additionally filtered
+    # to their own crm_company_id by the portal routes themselves.
+    "customer": {"support.read", "support.write", "monitoring.read"},
     "super_admin": _EVERYTHING,
     "company_admin": _EVERYTHING - {"company.manage"},
     "manager": (
         _COMMON_READ
         | _all(["projects", "tasks", "ideas", "brainstorm", "documents", "decisions",
                 "meetings", "workflows", "goals", "rd"], WRITE)
-        | _all(["approvals", "letters"], READ, WRITE)
-        | _all(["hr", "finance", "analytics", "crm", "audit"], READ)
-        | {"projects.manage", "tasks.manage", "goals.manage", "letters.manage"}
+        | _all(["approvals", "letters", "support", "planning"], READ, WRITE)
+        | _all(["hr", "finance", "analytics", "crm", "audit", "monitoring"], READ)
+        | {"projects.manage", "tasks.manage", "goals.manage", "letters.manage",
+           "support.manage", "planning.manage"}
     ),
     "project_manager": (
         _COMMON_READ
@@ -121,6 +127,7 @@ ROLE_RANK: dict[str, int] = {
     "rd": 30,
     "employee": 20,
     "viewer": 10,
+    "customer": 5,
 }
 
 
@@ -184,6 +191,11 @@ ROLE_INFO: dict[str, dict[str, str]] = {
         "label": "Research",
         "summary": "Research projects, experiments and the idea pipeline.",
         "caution": "",
+    },
+    "customer": {
+        "label": "Customer",
+        "summary": "An external login. Sees only their own tickets, projects and uptime.",
+        "caution": "Give this to people outside the company — never to staff.",
     },
     "viewer": {
         "label": "Viewer",

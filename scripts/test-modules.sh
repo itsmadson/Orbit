@@ -14,7 +14,7 @@ failures = 0
 
 
 def call(method, path, token=None, body=None, params=None):
-    url = f"{API}{path}" + ("?" + urllib.parse.urlencode(params) if params else "")
+    url = f"{API}{path}" + ("?" + urllib.parse.urlencode(params, doseq=True) if params else "")
     request = urllib.request.Request(url, method=method)
     request.add_header("content-type", "application/json")
     if token:

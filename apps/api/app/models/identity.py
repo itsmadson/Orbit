@@ -55,6 +55,14 @@ class User(OrbitBase, SoftDeleteMixin):
     password_hash: Mapped[str] = mapped_column(String(255), nullable=False)
     full_name: Mapped[str] = mapped_column(String(160), nullable=False)
     role: Mapped[str] = mapped_column(String(40), default="employee", index=True)
+    #: Set only for the "customer" role: the CRM company this login may see.
+    #: Everything the portal serves is filtered by it, so an external login can
+    #: never reach another customer's records.
+    crm_company_id: Mapped[uuid.UUID | None] = mapped_column(
+        PGUUID(as_uuid=True), ForeignKey("crm_companies.id", ondelete="CASCADE"), index=True
+    )
+    #: Hours a week this person can take on, used by capacity planning.
+    weekly_capacity_hours: Mapped[float] = mapped_column(Numeric(5, 1), default=40)
     title: Mapped[str | None] = mapped_column(String(160))
     department_id: Mapped[uuid.UUID | None] = mapped_column(
         PGUUID(as_uuid=True), ForeignKey("departments.id", ondelete="SET NULL"), index=True
