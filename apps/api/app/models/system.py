@@ -147,6 +147,58 @@ class Integration(OrbitBase):
     connected_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
 
+class IntegrationLink(OrbitBase):
+    """An Orbit project bound to one remote repository or Jira project."""
+
+    __tablename__ = "integration_links"
+    __table_args__ = (
+        UniqueConstraint("project_id", "provider", "remote_key", name="uq_integration_link"),
+    )
+
+    company_id: Mapped[uuid.UUID] = mapped_column(
+        PGUUID(as_uuid=True), ForeignKey("companies.id", ondelete="CASCADE"), index=True
+    )
+    project_id: Mapped[uuid.UUID] = mapped_column(
+        PGUUID(as_uuid=True), ForeignKey("projects.id", ondelete="CASCADE"), index=True
+    )
+    provider: Mapped[str] = mapped_column(String(40), nullable=False)
+    remote_key: Mapped[str] = mapped_column(String(200), nullable=False)  # owner/repo, group/project, KEY
+    remote_name: Mapped[str | None] = mapped_column(String(200))
+    remote_url: Mapped[str | None] = mapped_column(String(600))
+    auto_sync: Mapped[bool] = mapped_column(Boolean, default=True)
+    last_synced_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    last_error: Mapped[str | None] = mapped_column(String(400))
+
+
+class ExternalIssue(OrbitBase):
+    """The remote twin of a task. One row per task per provider."""
+
+    __tablename__ = "external_issues"
+    __table_args__ = (
+        UniqueConstraint("company_id", "provider", "remote_key", "remote_id",
+                         name="uq_external_issue"),
+    )
+
+    company_id: Mapped[uuid.UUID] = mapped_column(
+        PGUUID(as_uuid=True), ForeignKey("companies.id", ondelete="CASCADE"), index=True
+    )
+    task_id: Mapped[uuid.UUID] = mapped_column(
+        PGUUID(as_uuid=True), ForeignKey("tasks.id", ondelete="CASCADE"), index=True
+    )
+    link_id: Mapped[uuid.UUID | None] = mapped_column(
+        PGUUID(as_uuid=True), ForeignKey("integration_links.id", ondelete="SET NULL")
+    )
+    provider: Mapped[str] = mapped_column(String(40), nullable=False)
+    remote_key: Mapped[str] = mapped_column(String(200), nullable=False)
+    remote_id: Mapped[str] = mapped_column(String(80), nullable=False)   # issue number / iid / KEY-12
+    url: Mapped[str | None] = mapped_column(String(600))
+    remote_state: Mapped[str | None] = mapped_column(String(80))
+    remote_updated_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    synced_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    #: What Orbit last wrote or read, so a sync can tell which side moved.
+    snapshot: Mapped[dict] = mapped_column(JSONB, default=dict)
+
+
 class AiConversation(OrbitBase):
     __tablename__ = "ai_conversations"
 

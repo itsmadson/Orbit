@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useQueryClient } from "@tanstack/react-query";
 import { Atom, FlaskConical, Plus } from "lucide-react";
 import { api } from "@/lib/api";
-import { useI18n, useT } from "@/lib/i18n";
+import { useHumanize, useI18n, useT } from "@/lib/i18n";
 import { useCreate, useCreateParam, useDebounced, useItem, useList } from "@/lib/hooks";
 import { useSession } from "@/components/providers";
 import type { Experiment, Research } from "@/lib/types";
@@ -23,6 +23,7 @@ import { formatCurrency, formatDate, humanize } from "@/lib/utils";
 const EXPERIMENT_STATUSES = ["planned", "running", "completed", "failed", "validated", "archived"];
 
 export function RdListView() {
+  const humanize = useHumanize();
   const t = useT();
   const { locale } = useI18n();
   const { can, company } = useSession();
@@ -45,7 +46,7 @@ export function RdListView() {
     <div>
       <PageHeader
         title={t("rd.title")}
-        subtitle="Research questions, hypotheses and the experiments that answer them"
+        subtitle={t("rd.subtitle")}
         actions={
           can("rd.write") ? (
             <Button variant="primary" onClick={() => setCreateOpen(true)}>
@@ -59,8 +60,8 @@ export function RdListView() {
       <div className="mb-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         <MetricCard label={t("rd.title")} value={list.data?.total ?? 0} icon={<FlaskConical className="h-3.5 w-3.5" />} />
         <MetricCard label={t("rd.experiments")} value={experiments.data?.total ?? 0} icon={<Atom className="h-3.5 w-3.5" />} />
-        <MetricCard label="Running" value={running} tone="accent" />
-        <MetricCard label="Validated" value={validated} tone="positive" />
+        <MetricCard label={t("status.running")} value={running} tone="accent" />
+        <MetricCard label={t("status.validated")} value={validated} tone="positive" />
       </div>
 
       <Toolbar>
@@ -177,24 +178,24 @@ function ResearchDialog({
             <Textarea
               value={form.research_question}
               onChange={(event) => setForm({ ...form, research_question: event.target.value })}
-              placeholder="What are we trying to find out?"
+              placeholder={t("rd.questionPlaceholder")}
             />
           </Field>
           <Field label={t("rd.hypothesis")}>
             <Textarea
               value={form.hypothesis}
               onChange={(event) => setForm({ ...form, hypothesis: event.target.value })}
-              placeholder="We believe that…"
+              placeholder={t("rd.hypothesisPlaceholder")}
             />
           </Field>
-          <Field label={t("rd.objectives")} hint="Enter to add">
+          <Field label={t("rd.objectives")} hint={t("common.enterToAdd")}>
             <TagInput
               value={form.objectives}
               onChange={(objectives) => setForm({ ...form, objectives })}
             />
           </Field>
           <div className="grid gap-3 sm:grid-cols-2">
-            <Field label="Lead researcher">
+            <Field label={t("rd.leadResearcher")}>
               <UserPicker value={form.lead_id} onChange={(lead_id) => setForm({ ...form, lead_id })} />
             </Field>
             <Field label={t("common.budget")}>
@@ -220,6 +221,7 @@ function ResearchDialog({
 }
 
 export function ResearchDetail({ researchId }: { researchId: string }) {
+  const humanize = useHumanize();
   const t = useT();
   const { locale } = useI18n();
   const client = useQueryClient();
@@ -351,7 +353,7 @@ export function ResearchDetail({ researchId }: { researchId: string }) {
               <DetailRow label={t("common.status")}>
                 <StatusBadge status={research.status} />
               </DetailRow>
-              <DetailRow label="Lead">
+              <DetailRow label={t("rd.lead")}>
                 {research.lead ? (
                   <span className="flex items-center justify-end gap-1.5">
                     <Avatar name={research.lead.full_name} color={research.lead.avatar_color} size={18} />
@@ -364,7 +366,7 @@ export function ResearchDetail({ researchId }: { researchId: string }) {
               <DetailRow label={t("common.budget")}>
                 {research.budget ? formatCurrency(research.budget, company.currency, locale, true) : "—"}
               </DetailRow>
-              <DetailRow label="Start">{formatDate(research.start_date, locale)}</DetailRow>
+              <DetailRow label={t("rd.start")}>{formatDate(research.start_date, locale)}</DetailRow>
               <DetailRow label={t("rd.experiments")}>
                 {research.experiment_count} ({research.running_experiments} running)
               </DetailRow>
@@ -416,6 +418,7 @@ export function ExperimentDialog({
   researchId?: string;
   onDone?: () => void;
 }) {
+  const humanize = useHumanize();
   const t = useT();
   const [form, setForm] = React.useState({
     name: "",
@@ -428,7 +431,7 @@ export function ExperimentDialog({
 
   const create = useCreate<Experiment>("/experiments", {
     invalidate: ["/experiments", "/rd"],
-    success: "Experiment created",
+    success: t("rd.experimentCreated"),
     onDone: () => {
       onOpenChange(false);
       onDone?.();
@@ -474,7 +477,7 @@ export function ExperimentDialog({
                 options={EXPERIMENT_STATUSES.map((value) => ({ value, label: humanize(value) }))}
               />
             </Field>
-            <Field label="Researcher">
+            <Field label={t("rd.researcher")}>
               <UserPicker
                 value={form.researcher_id}
                 onChange={(researcher_id) => setForm({ ...form, researcher_id })}
@@ -503,6 +506,7 @@ export function ExperimentDialog({
 }
 
 export function ExperimentsView() {
+  const humanize = useHumanize();
   const t = useT();
   const { locale } = useI18n();
   const { can } = useSession();
@@ -547,7 +551,7 @@ export function ExperimentsView() {
     },
     {
       key: "researcher",
-      header: "Researcher",
+      header: t("rd.researcher"),
       cell: (row) =>
         row.researcher ? (
           <span className="flex items-center gap-1.5 text-[12px]">
@@ -560,7 +564,7 @@ export function ExperimentsView() {
     },
     {
       key: "ended",
-      header: "Ended",
+      header: t("rd.ended"),
       align: "end",
       cell: (row) => <span className="text-[12px] text-muted">{formatDate(row.ended_at, locale)}</span>,
     },
@@ -601,6 +605,7 @@ export function ExperimentsView() {
 }
 
 export function ExperimentDetail({ experimentId }: { experimentId: string }) {
+  const humanize = useHumanize();
   const t = useT();
   const { locale } = useI18n();
   const client = useQueryClient();
@@ -717,14 +722,14 @@ export function ExperimentDetail({ experimentId }: { experimentId: string }) {
               <DetailRow label={t("common.status")}>
                 <StatusBadge status={experiment.status} />
               </DetailRow>
-              <DetailRow label="Researcher">
+              <DetailRow label={t("rd.researcher")}>
                 {experiment.researcher?.full_name ?? "—"}
               </DetailRow>
               <DetailRow label={t("rd.dataset")}>
                 <span className="font-mono text-[11px]">{experiment.dataset_ref ?? "—"}</span>
               </DetailRow>
-              <DetailRow label="Started">{formatDate(experiment.started_at, locale)}</DetailRow>
-              <DetailRow label="Ended">{formatDate(experiment.ended_at, locale)}</DetailRow>
+              <DetailRow label={t("rd.started")}>{formatDate(experiment.started_at, locale)}</DetailRow>
+              <DetailRow label={t("rd.ended")}>{formatDate(experiment.ended_at, locale)}</DetailRow>
             </div>
           </Section>
           <Section title={t("common.related")} contentClassName="p-2">

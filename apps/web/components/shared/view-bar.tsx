@@ -70,7 +70,7 @@ export function ViewBar({
       setNaming(false);
       refresh();
     } catch (error: any) {
-      toast.error(error?.message ?? "Failed");
+      toast.error(error?.message ?? t("common.requestFailed"));
     }
   }
 

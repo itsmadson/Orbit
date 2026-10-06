@@ -152,7 +152,7 @@ export function TaskTable({
         <span
           className={cn(
             "text-[12px]",
-            isOverdue(row.due_date) && row.status !== "done" ? "text-danger" : "text-muted",
+            isOverdue(row.due_date) && !row.completed_at ? "text-danger" : "text-muted",
           )}
         >
           {formatDate(row.due_date, locale)}

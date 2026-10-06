@@ -1,5 +1,6 @@
 import { AiView } from "@/features/ai/ai";
-export const metadata = { title: "Orbit AI" };
+import { pageTitle } from "@/lib/page-title";
+export const generateMetadata = pageTitle("nav.ai");
 export default function Page() {
   return <AiView />;
 }

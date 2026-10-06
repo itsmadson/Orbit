@@ -10,12 +10,12 @@ import { OrbitMark } from "@/components/layout/sidebar";
 import { OrbitLoader } from "@/components/ui/orbit-loader";
 
 const DEMO_ACCOUNTS = [
-  { email: "admin@orbit.dev", role: "Company admin" },
-  { email: "manager@orbit.dev", role: "Engineering manager" },
-  { email: "dev@orbit.dev", role: "Engineer" },
-  { email: "researcher@orbit.dev", role: "R&D" },
-  { email: "finance@orbit.dev", role: "Finance" },
-  { email: "hr@orbit.dev", role: "HR" },
+  { email: "admin@orbit.dev", role: "auth.demo.admin" },
+  { email: "manager@orbit.dev", role: "auth.demo.manager" },
+  { email: "dev@orbit.dev", role: "auth.demo.engineer" },
+  { email: "researcher@orbit.dev", role: "nav.rd" },
+  { email: "finance@orbit.dev", role: "nav.finance" },
+  { email: "hr@orbit.dev", role: "nav.hr" },
 ];
 
 export function LoginForm() {
@@ -60,7 +60,7 @@ export function LoginForm() {
           </div>
           <div>
             <h2 className="text-[27px] font-semibold leading-[1.15] tracking-[-0.02em]">
-              The operating system for
+              {t("auth.heroLine")}
               <br />
               your company.
             </h2>
@@ -146,7 +146,7 @@ export function LoginForm() {
                   className="rounded-md border border-border bg-surface-2 px-2 py-1.5 text-start transition-colors hover:border-accent/40 hover:bg-accent-soft"
                 >
                   <span className="block truncate text-[12px]">{account.email}</span>
-                  <span className="block text-[10px] text-faint">{account.role}</span>
+                  <span className="block text-[10px] text-faint">{t(account.role)}</span>
                 </button>
               ))}
             </div>

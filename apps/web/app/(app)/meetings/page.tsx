@@ -1,7 +1,8 @@
 import { Suspense } from "react";
 import { MeetingsView } from "@/features/meetings/meetings";
+import { pageTitle } from "@/lib/page-title";
 
-export const metadata = { title: "Meetings" };
+export const generateMetadata = pageTitle("nav.meetings");
 
 export default function MeetingsPage() {
   return (

@@ -37,6 +37,12 @@ export function useItem<T>(
   });
 }
 
+/** Fallback toast text for a failure that carried no message of its own. */
+function requestFailed() {
+  const fa = typeof document !== "undefined" && document.documentElement.lang === "fa";
+  return fa ? "درخواست ناموفق بود" : "Request failed";
+}
+
 type MutationOptions = {
   invalidate?: string[];
   success?: string;
@@ -54,7 +60,7 @@ export function useCreate<T, B = unknown>(path: string, options: MutationOptions
       if (options.success) toast.success(options.success);
       options.onDone?.(data);
     },
-    onError: (error: any) => toast.error(error?.message ?? "Request failed"),
+    onError: (error: any) => toast.error(error?.message ?? requestFailed()),
   });
 }
 
@@ -71,7 +77,7 @@ export function useUpdate<T, B = unknown>(
       if (options.success) toast.success(options.success);
       options.onDone?.(data);
     },
-    onError: (error: any) => toast.error(error?.message ?? "Request failed"),
+    onError: (error: any) => toast.error(error?.message ?? requestFailed()),
   });
 }
 
@@ -87,7 +93,7 @@ export function useAction<T, B = unknown>(
       if (options.success) toast.success(options.success);
       options.onDone?.(data);
     },
-    onError: (error: any) => toast.error(error?.message ?? "Request failed"),
+    onError: (error: any) => toast.error(error?.message ?? requestFailed()),
   });
 }
 
@@ -100,7 +106,7 @@ export function useRemove(pathBuilder: (id: string) => string, options: Mutation
       if (options.success) toast.success(options.success);
       options.onDone?.(undefined);
     },
-    onError: (error: any) => toast.error(error?.message ?? "Request failed"),
+    onError: (error: any) => toast.error(error?.message ?? requestFailed()),
   });
 }
 

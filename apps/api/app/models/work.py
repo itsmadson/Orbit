@@ -9,6 +9,18 @@ from app.models.base import OrbitBase, SoftDeleteMixin
 
 PROJECT_STATUSES = ["planning", "active", "on_hold", "completed", "cancelled"]
 TASK_STATUSES = ["backlog", "todo", "in_progress", "in_review", "done", "cancelled"]
+#: What a status means to the rest of the product. Columns are free-form; reports
+#: only ever ask "is this open, moving, finished or dropped?".
+STATUS_CATEGORIES = ["open", "started", "done", "cancelled"]
+DEFAULT_TASK_STATUSES = [
+    # key, English, Persian, category, colour
+    ("backlog", "Backlog", "بک‌لاگ", "open", "#8b93a1"),
+    ("todo", "To do", "برای انجام", "open", "#2d88e2"),
+    ("in_progress", "In progress", "در حال انجام", "started", "#f5501b"),
+    ("in_review", "In review", "در حال بازبینی", "started", "#d9a400"),
+    ("done", "Done", "انجام‌شده", "done", "#61a746"),
+    ("cancelled", "Cancelled", "لغوشده", "cancelled", "#6b7280"),
+]
 TASK_TYPES = ["task", "bug", "feature", "story", "epic", "subtask"]
 PRIORITIES = ["low", "medium", "high", "urgent"]
 
@@ -139,6 +151,29 @@ class Task(OrbitBase, SoftDeleteMixin):
     labels: Mapped[list] = mapped_column(JSONB, default=list)
     order_index: Mapped[int] = mapped_column(Integer, default=0)
     is_blocked: Mapped[bool] = mapped_column(Boolean, default=False)
+
+
+class TaskStatus(OrbitBase):
+    """One column of the board.
+
+    ``Task.status`` stores the ``key``. The six built-in states are rows like any
+    other; ``category`` is what dashboards, velocity and overdue counts read, so
+    a company can add "QA" or "Waiting on customer" without breaking a report.
+    """
+
+    __tablename__ = "task_statuses"
+    __table_args__ = (UniqueConstraint("company_id", "key", name="uq_task_status_key"),)
+
+    company_id: Mapped[uuid.UUID] = mapped_column(
+        PGUUID(as_uuid=True), ForeignKey("companies.id", ondelete="CASCADE"), index=True
+    )
+    key: Mapped[str] = mapped_column(String(24), nullable=False)
+    name: Mapped[str] = mapped_column(String(60), nullable=False)
+    name_fa: Mapped[str | None] = mapped_column(String(60))
+    category: Mapped[str] = mapped_column(String(16), default="open")
+    color: Mapped[str] = mapped_column(String(16), default="#8b93a1")
+    order_index: Mapped[int] = mapped_column(Integer, default=0)
+    is_system: Mapped[bool] = mapped_column(Boolean, default=False)
 
 
 class TaskDependency(OrbitBase):

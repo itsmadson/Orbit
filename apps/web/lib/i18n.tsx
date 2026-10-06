@@ -38,6 +38,13 @@ export function I18nProvider({
     document.documentElement.lang = next;
     document.documentElement.dir = dir;
     setLocaleState(next);
+    // Remember it on the profile too: notifications are written in the
+    // recipient's language, long after this tab is closed.
+    fetch("/api/orbit/auth/me", {
+      method: "PATCH",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ locale: next }),
+    }).catch(() => undefined);
   }, []);
 
   const value = useMemo<I18nContextValue>(() => {
@@ -73,4 +80,27 @@ export function useI18n() {
 
 export function useT() {
   return useI18n().t;
+}
+
+/**
+ * Words for the values the API sends as keys: `in_progress`, `urgent`, `bug`.
+ *
+ * Looks the value up as a status, a priority, then a general enum; a value the
+ * dictionary does not know is humanised, so a new one never shows a raw key.
+ */
+export function useHumanize() {
+  const { t } = useI18n();
+  return useCallback(
+    (value?: string | number | null) => {
+      if (value === null || value === undefined || value === "") return "—";
+      const raw = String(value);
+      for (const namespace of ["enum", "status", "priority"]) {
+        const key = `${namespace}.${raw}`;
+        const text = t(key);
+        if (text !== key) return text;
+      }
+      return raw.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
+    },
+    [t],
+  );
 }

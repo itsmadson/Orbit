@@ -88,7 +88,7 @@ export function MonitorsView() {
       setOpen(false);
       refresh();
     } catch (error: any) {
-      toast.error(error?.message ?? "Failed");
+      toast.error(error?.message ?? t("common.requestFailed"));
     } finally {
       setBusy(false);
     }
@@ -98,10 +98,10 @@ export function MonitorsView() {
     setBusy(true);
     try {
       const result = await api.post<{ checked: number }>("/monitors/check");
-      toast.success(`${result.checked}`);
+      toast.success(t("monitoring.checked", { count: result.checked }));
       refresh();
     } catch (error: any) {
-      toast.error(error?.message ?? "Failed");
+      toast.error(error?.message ?? t("common.requestFailed"));
     } finally {
       setBusy(false);
     }
@@ -170,7 +170,7 @@ export function MonitorsView() {
                 onChange={(event) => setForm({ ...form, name: event.target.value })}
               />
             </Field>
-            <Field label="URL">
+            <Field label={t("monitoring.url")}>
               <Input
                 value={form.url}
                 onChange={(event) => setForm({ ...form, url: event.target.value })}

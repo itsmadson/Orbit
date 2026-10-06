@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
 import { ChevronRight, FileText, Folder, History, Plus } from "lucide-react";
 import { api } from "@/lib/api";
-import { useI18n, useT } from "@/lib/i18n";
+import { useHumanize, useI18n, useT } from "@/lib/i18n";
 import { useCreate, useCreateParam, useDebounced, useItem, useList } from "@/lib/hooks";
 import { useSession } from "@/components/providers";
 import type { Doc } from "@/lib/types";
@@ -56,7 +56,7 @@ export function WikiView() {
     <div>
       <PageHeader
         title={t("knowledge.title")}
-        subtitle="Company knowledge: documentation, SOPs, specs and research"
+        subtitle={t("knowledge.subtitle")}
         actions={
           can("documents.write") ? (
             <Button variant="primary" onClick={() => setCreateOpen(true)}>
@@ -117,7 +117,7 @@ export function WikiView() {
             </Section>
           ) : (
             <>
-              <Section title="Pages" contentClassName="p-2">
+              <Section title={t("knowledge.pages")} contentClassName="p-2">
                 {tree.isLoading ? (
                   <Skeleton className="h-32 w-full" />
                 ) : tree.data?.length ? (
@@ -144,6 +144,7 @@ export function WikiView() {
 }
 
 function DocRow({ doc }: { doc: Doc }) {
+  const humanize = useHumanize();
   const { locale } = useI18n();
   return (
     <li className="border-b border-border/60 last:border-0">
@@ -190,6 +191,7 @@ function Tree({ nodes, depth = 0 }: { nodes: TreeNode[]; depth?: number }) {
 }
 
 export function DocumentsView() {
+  const humanize = useHumanize();
   const t = useT();
   const { locale } = useI18n();
   const { can } = useSession();
@@ -221,7 +223,7 @@ export function DocumentsView() {
     { key: "status", header: t("common.status"), cell: (row) => <StatusBadge status={row.status} /> },
     {
       key: "author",
-      header: "Author",
+      header: t("knowledge.author"),
       cell: (row) =>
         row.author ? (
           <span className="flex items-center gap-1.5 text-[12px]">
@@ -287,6 +289,7 @@ export function DocumentDialog({
   spaceId?: string;
   projectId?: string;
 }) {
+  const humanize = useHumanize();
   const t = useT();
   const router = useRouter();
   const spaces = useItem<Space[]>("/spaces");
@@ -303,7 +306,7 @@ export function DocumentDialog({
 
   const create = useCreate<Doc>("/documents", {
     invalidate: ["/documents", "/documents/tree", "/spaces"],
-    success: "Document created",
+    success: t("knowledge.created"),
     onDone: (doc) => {
       onOpenChange(false);
       router.push(`/documents/${doc.id}`);
@@ -367,7 +370,7 @@ export function DocumentDialog({
               <TagInput value={form.tags} onChange={(tags) => setForm({ ...form, tags })} />
             </Field>
           </div>
-          <Field label="Content">
+          <Field label={t("knowledge.content")}>
             <RichEditor
               content={form.content}
               onChange={(content) => setForm({ ...form, content })}
@@ -389,6 +392,7 @@ export function DocumentDialog({
 }
 
 export function DocumentDetail({ documentId }: { documentId: string }) {
+  const humanize = useHumanize();
   const t = useT();
   const { locale } = useI18n();
   const client = useQueryClient();

@@ -1,6 +1,7 @@
 import { InboxView } from "@/features/inbox/inbox";
+import { pageTitle } from "@/lib/page-title";
 
-export const metadata = { title: "Inbox" };
+export const generateMetadata = pageTitle("nav.inbox");
 
 export default function InboxPage() {
   return <InboxView />;

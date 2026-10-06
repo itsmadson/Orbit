@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
 import { Search, Share2 } from "lucide-react";
 import { api } from "@/lib/api";
-import { useT } from "@/lib/i18n";
+import { useHumanize, useT } from "@/lib/i18n";
 import { useDebounced } from "@/lib/hooks";
 import { PageHeader, Section } from "@/components/shared/page";
 import { SearchInput } from "@/components/shared/data";
@@ -20,6 +20,7 @@ type Graph = { nodes: Node[]; edges: { source: string; target: string; type: str
  *  relationship type. Deterministic, readable and cheap to render. */
 export function GraphView() {
   const t = useT();
+  const humanize = useHumanize();
   const [query, setQuery] = React.useState("");
   const [root, setRoot] = React.useState<Node | null>(null);
   const search = useDebounced(query);
@@ -56,13 +57,13 @@ export function GraphView() {
       <PageHeader
         title={t("nav.graph")}
         icon={<Share2 className="h-5 w-5 text-muted" />}
-        subtitle="Every entity in ORBIT is a node; every connection is a typed edge"
+        subtitle={t("graph.subtitle")}
       />
 
       <div className="grid gap-4 lg:grid-cols-[280px_1fr]">
         <aside className="space-y-3">
           <Section title={t("action.search")} contentClassName="p-3">
-            <SearchInput value={query} onChange={setQuery} placeholder="Find an entity…" />
+            <SearchInput value={query} onChange={setQuery} placeholder={t("graph.find")} />
             <ul className="mt-2 space-y-0.5">
               {(results.data?.hits ?? []).map((hit) => {
                 const Icon = ENTITY_ICONS[hit.type] ?? Search;
@@ -95,8 +96,8 @@ export function GraphView() {
           {!root ? (
             <EmptyState
               icon={Share2}
-              title="Pick an entity to explore"
-              description="Search for a project, task, idea, customer or person to see everything connected to it."
+              title={t("graph.pick")}
+              description={t("graph.pickHint")}
             />
           ) : graph.isLoading ? (
             <Skeleton className="h-96 w-full" />
@@ -113,7 +114,7 @@ export function GraphView() {
 
               <div>
                 <p className="mb-2 text-[11px] font-medium uppercase tracking-wider text-faint">
-                  Directly connected
+                  {t("graph.direct")}
                 </p>
                 <div className="flex flex-wrap gap-2">
                   {firstRing.map((node) => {
@@ -132,13 +133,13 @@ export function GraphView() {
                         <Icon className="h-3.5 w-3.5 text-faint group-hover:text-accent" />
                         <span className="max-w-[220px] truncate text-[13px]">{node.title}</span>
                         <span className="rounded bg-surface px-1.5 py-0.5 text-[10px] uppercase tracking-wide text-faint">
-                          {edge?.type.replace(/_/g, " ")}
+                          {humanize(edge?.type)}
                         </span>
                       </Link>
                     );
                   })}
                   {!firstRing.length ? (
-                    <p className="text-[13px] text-faint">No connections yet</p>
+                    <p className="text-[13px] text-faint">{t("graph.none")}</p>
                   ) : null}
                 </div>
               </div>
@@ -146,7 +147,7 @@ export function GraphView() {
               {secondRing.length ? (
                 <div>
                   <p className="mb-2 text-[11px] font-medium uppercase tracking-wider text-faint">
-                    Two hops away
+                    {t("graph.twoHops")}
                   </p>
                   <div className="flex flex-wrap gap-1.5">
                     {secondRing.map((node) => {

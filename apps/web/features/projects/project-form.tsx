@@ -4,7 +4,7 @@ import * as React from "react";
 import { useRouter } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
-import { useT } from "@/lib/i18n";
+import { useHumanize, useT } from "@/lib/i18n";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogFooter, DialogHeader } from "@/components/ui/dialog";
 import { Field, Input, Textarea } from "@/components/ui/input";
@@ -24,6 +24,7 @@ export function ProjectDialog({
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }) {
+  const humanize = useHumanize();
   const t = useT();
   const router = useRouter();
   const client = useQueryClient();
@@ -43,7 +44,7 @@ export function ProjectDialog({
 
   const create = useCreate<ProjectSummary>("/projects", {
     invalidate: ["/projects"],
-    success: "Project created",
+    success: t("projects.created"),
     onDone: (project) => {
       onOpenChange(false);
       client.invalidateQueries({ queryKey: ["dashboard"] });
@@ -68,7 +69,7 @@ export function ProjectDialog({
         <form onSubmit={submit} className="space-y-3">
           <div className="flex gap-2">
             <div className="w-[72px]">
-              <Field label="Icon">
+              <Field label={t("projects.icon")}>
                 <SimpleSelect
                   value={form.icon}
                   onValueChange={(icon) => setForm({ ...form, icon })}
@@ -83,7 +84,7 @@ export function ProjectDialog({
                   autoFocus
                   value={form.name}
                   onChange={(event) => setForm({ ...form, name: event.target.value })}
-                  placeholder="Project Atlas"
+                  placeholder={t("projects.namePlaceholder")}
                 />
               </Field>
             </div>
@@ -92,7 +93,7 @@ export function ProjectDialog({
             <Textarea
               value={form.description}
               onChange={(event) => setForm({ ...form, description: event.target.value })}
-              placeholder="What is this project for?"
+              placeholder={t("projects.descriptionPlaceholder")}
             />
           </Field>
           <div className="grid gap-3 sm:grid-cols-2">
@@ -100,14 +101,14 @@ export function ProjectDialog({
               <SimpleSelect
                 value={form.status}
                 onValueChange={(status) => setForm({ ...form, status })}
-                options={STATUSES.map((value) => ({ value, label: value.replace("_", " ") }))}
+                options={STATUSES.map((value) => ({ value, label: humanize(value) }))}
               />
             </Field>
             <Field label={t("common.priority")}>
               <SimpleSelect
                 value={form.priority}
                 onValueChange={(priority) => setForm({ ...form, priority })}
-                options={PRIORITIES.map((value) => ({ value, label: value }))}
+                options={PRIORITIES.map((value) => ({ value, label: humanize(value) }))}
               />
             </Field>
             <Field label={t("projects.lead")}>
@@ -121,14 +122,14 @@ export function ProjectDialog({
                 placeholder="50000"
               />
             </Field>
-            <Field label="Start date">
+            <Field label={t("common.startDate")}>
               <Input
                 type="date"
                 value={form.start_date}
                 onChange={(event) => setForm({ ...form, start_date: event.target.value })}
               />
             </Field>
-            <Field label="End date">
+            <Field label={t("common.endDate")}>
               <Input
                 type="date"
                 value={form.end_date}

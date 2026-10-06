@@ -14,6 +14,7 @@ from starlette.exceptions import HTTPException as StarletteHTTPException
 from app.api.v1 import api_router
 from app.core.config import settings
 from app.core.db import engine
+from app.core.i18n import localize, request_locale
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("orbit")
@@ -43,8 +44,19 @@ async def lifespan(app: FastAPI):
         )
         logger.info("uptime monitoring started")
 
+    sync_task = None
+    if settings.INTEGRATION_SYNC_ENABLED:
+        from app.core.db import SessionLocal as SyncSession
+        from app.services.integrations.sync import integration_loop
+
+        sync_task = asyncio.create_task(integration_loop(SyncSession))
+
     yield
 
+    if sync_task:
+        sync_task.cancel()
+        with suppress(asyncio.CancelledError):
+            await sync_task
     if monitor_task:
         monitor_task.cancel()
         with suppress(asyncio.CancelledError):
@@ -92,7 +104,8 @@ async def security_and_rate_limit(request: Request, call_next):
     if len(bucket) >= settings.RATE_LIMIT_PER_MINUTE:
         return JSONResponse(
             status_code=429,
-            content={"code": "rate_limited", "message": "Too many requests, slow down."},
+            content={"code": "rate_limited", "message": localize(
+                request_locale(request), "Too many requests, slow down.")},
         )
     bucket.append(now)
 
@@ -107,11 +120,14 @@ async def security_and_rate_limit(request: Request, call_next):
 @app.exception_handler(StarletteHTTPException)
 async def http_exception_handler(request: Request, exc: StarletteHTTPException):
     detail = exc.detail
+    locale = request_locale(request)
     if isinstance(detail, dict):
+        if isinstance(detail.get("message"), str):
+            detail = {**detail, "message": localize(locale, detail["message"])}
         return JSONResponse(status_code=exc.status_code, content=detail)
     return JSONResponse(
         status_code=exc.status_code,
-        content={"code": "error", "message": str(detail)},
+        content={"code": "error", "message": localize(locale, str(detail))},
     )
 
 
@@ -121,7 +137,7 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
         status_code=422,
         content={
             "code": "validation_error",
-            "message": "The submitted data is not valid",
+            "message": localize(request_locale(request), "The submitted data is not valid"),
             "fields": [
                 {"field": ".".join(str(p) for p in err["loc"][1:]), "message": err["msg"]}
                 for err in exc.errors()

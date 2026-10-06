@@ -55,7 +55,7 @@ export function RoadmapsView() {
       <PageHeader
         title={t("nav.roadmaps")}
         icon={<MapIcon className="h-5 w-5 text-muted" />}
-        subtitle="Every active project on one timeline, with its milestones"
+        subtitle={t("projects.roadmapSubtitle")}
       />
 
       <Section contentClassName="p-4">

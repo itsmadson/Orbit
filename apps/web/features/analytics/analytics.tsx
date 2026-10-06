@@ -6,16 +6,17 @@ import {
   Bar, BarChart, CartesianGrid, Cell, Legend, Line, LineChart, Pie, PieChart,
   ResponsiveContainer, Tooltip as ReTooltip, XAxis, YAxis,
 } from "recharts";
-import { useI18n, useT } from "@/lib/i18n";
+import { useHumanize, useI18n, useT } from "@/lib/i18n";
 import { useItem } from "@/lib/hooks";
 import { useSession } from "@/components/providers";
 import { MetricCard, PageHeader, Section } from "@/components/shared/page";
 import { Avatar, EmptyState, Progress, StatusBadge } from "@/components/ui/misc";
 import { LoadingPanel } from "@/components/shared/entity";
 import { chartAxis, chartTooltip } from "@/features/finance/finance";
-import { chartPalette, cn, formatCurrency, formatDate, formatNumber, humanize } from "@/lib/utils";
+import { chartPalette, cn, formatCurrency, formatDate, formatNumber } from "@/lib/utils";
 
 export function CompanyAnalytics() {
+  const humanize = useHumanize();
   const t = useT();
   const { locale } = useI18n();
   const { data, isLoading } = useItem<any>("/analytics/company");
@@ -32,7 +33,7 @@ export function CompanyAnalytics() {
       <div className="mb-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         <MetricCard label={t("dashboard.health")} value={`${metrics.health}/100`} tone={metrics.health >= 70 ? "positive" : "warning"} />
         <MetricCard label={t("dashboard.activeProjects")} value={metrics.active_projects} hint={`${metrics.projects_at_risk} at risk`} />
-        <MetricCard label="Task completion" value={`${metrics.task_completion_rate}%`} tone="accent" />
+        <MetricCard label={t("analytics.taskCompletion")} value={`${metrics.task_completion_rate}%`} tone="accent" />
         <MetricCard label={t("dashboard.headcount")} value={metrics.headcount} />
       </div>
 
@@ -57,7 +58,7 @@ export function CompanyAnalytics() {
           </div>
         </Section>
 
-        <Section title="Tasks by status" contentClassName="p-3">
+        <Section title={t("analytics.tasksByStatus")} contentClassName="p-3">
           <div className="h-60 w-full">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={toSeries(data.tasks_by_status)}>
@@ -75,7 +76,7 @@ export function CompanyAnalytics() {
           </div>
         </Section>
 
-        <Section title="Idea pipeline" contentClassName="p-3">
+        <Section title={t("analytics.ideaPipeline")} contentClassName="p-3">
           <div className="h-60 w-full">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={toSeries(data.ideas_by_status)} layout="vertical">
@@ -89,7 +90,7 @@ export function CompanyAnalytics() {
           </div>
         </Section>
 
-        <Section title="Experiments" contentClassName="p-3">
+        <Section title={t("nav.experiments")} contentClassName="p-3">
           <div className="h-60 w-full">
             <ResponsiveContainer width="100%" height="100%">
               <PieChart>
@@ -260,6 +261,7 @@ export function PeopleAnalytics() {
 }
 
 export function FinanceAnalytics() {
+  const humanize = useHumanize();
   const t = useT();
   const { locale } = useI18n();
   const { company } = useSession();

@@ -9,7 +9,7 @@ import {
 } from "recharts";
 import { Banknote, Plus, Receipt, TrendingDown, TrendingUp, Wallet } from "lucide-react";
 import { api } from "@/lib/api";
-import { useI18n, useT } from "@/lib/i18n";
+import { useHumanize, useI18n, useT } from "@/lib/i18n";
 import { useCreate, useCreateParam, useItem, useList } from "@/lib/hooks";
 import { useSession } from "@/components/providers";
 import type { Invoice, Transaction } from "@/lib/types";
@@ -23,7 +23,7 @@ import { Field, Input } from "@/components/ui/input";
 import { SimpleSelect } from "@/components/ui/select";
 import { useProjects } from "@/components/shared/pickers";
 import { useDebounced } from "@/lib/hooks";
-import { cn, formatCurrency, formatDate, humanize } from "@/lib/utils";
+import { cn, formatCurrency, formatDate } from "@/lib/utils";
 
 type Summary = {
   income: number;
@@ -66,6 +66,7 @@ export const chartTooltip = {
 };
 
 export function FinanceView() {
+  const humanize = useHumanize();
   const t = useT();
   const { locale } = useI18n();
   const { can, company } = useSession();
@@ -80,7 +81,7 @@ export function FinanceView() {
     <div>
       <PageHeader
         title={t("finance.title")}
-        subtitle="Money connected to projects, customers, vendors and budgets"
+        subtitle={t("finance.subtitle")}
         actions={
           can("finance.write") ? (
             <>
@@ -103,13 +104,13 @@ export function FinanceView() {
           value={formatCurrency(summary.data?.income, currency, locale, true)}
           tone="positive"
           icon={<TrendingUp className="h-3.5 w-3.5" />}
-          hint="last 6 months"
+          hint={t("common.last6Months")}
         />
         <MetricCard
           label={t("finance.expenses")}
           value={formatCurrency(summary.data?.expenses, currency, locale, true)}
           icon={<TrendingDown className="h-3.5 w-3.5" />}
-          hint="last 6 months"
+          hint={t("common.last6Months")}
         />
         <MetricCard
           label={t("finance.net")}
@@ -409,6 +410,7 @@ function TransactionsTable() {
 }
 
 function InvoicesTable() {
+  const humanize = useHumanize();
   const t = useT();
   const { locale } = useI18n();
   const { company } = useSession();
@@ -428,17 +430,17 @@ function InvoicesTable() {
   };
 
   const columns: Column<Invoice>[] = [
-    { key: "number", header: "Invoice", cell: (row) => <span className="font-mono text-[12px]">{row.number}</span> },
-    { key: "customer", header: "Customer", cell: (row) => <span className="truncate">{row.customer_name ?? "—"}</span> },
+    { key: "number", header: t("finance.invoice"), cell: (row) => <span className="font-mono text-[12px]">{row.number}</span> },
+    { key: "customer", header: t("common.customer"), cell: (row) => <span className="truncate">{row.customer_name ?? "—"}</span> },
     { key: "status", header: t("common.status"), cell: (row) => <StatusBadge status={row.status} /> },
     {
       key: "issued",
-      header: "Issued",
+      header: t("finance.issued"),
       cell: (row) => <span className="text-[12px] text-muted">{formatDate(row.issued_on, locale)}</span>,
     },
     {
       key: "due",
-      header: "Due",
+      header: t("finance.due"),
       cell: (row) => <span className="text-[12px] text-muted">{formatDate(row.due_on, locale)}</span>,
     },
     {
@@ -458,7 +460,7 @@ function InvoicesTable() {
       cell: (row) =>
         can("finance.write") && row.status !== "paid" ? (
           <Button size="xs" variant="secondary" onClick={() => markPaid(row.id)}>
-            Mark paid
+            {t("finance.markPaid")}
           </Button>
         ) : null,
     },
@@ -514,7 +516,7 @@ function TransactionDialog({
 
   const create = useCreate<Transaction>("/finance/transactions", {
     invalidate: ["/finance/transactions", "/finance/summary", "/finance/budgets", "dashboard"],
-    success: "Transaction recorded",
+    success: t("finance.transactionRecorded"),
     onDone: () => onOpenChange(false),
   });
 
@@ -642,7 +644,7 @@ function InvoiceDialog({
 
   const create = useCreate<Invoice>("/finance/invoices", {
     invalidate: ["/finance/invoices", "/finance/summary"],
-    success: "Invoice created",
+    success: t("finance.invoiceCreated"),
     onDone: () => onOpenChange(false),
   });
 
@@ -668,7 +670,7 @@ function InvoiceDialog({
           }}
         >
           <div className="grid gap-3 sm:grid-cols-2">
-            <Field label="Customer">
+            <Field label={t("common.customer")}>
               <SimpleSelect
                 value={form.customer_id}
                 onValueChange={(customer_id) => setForm({ ...form, customer_id })}
@@ -690,14 +692,14 @@ function InvoiceDialog({
                 }))}
               />
             </Field>
-            <Field label="Due date">
+            <Field label={t("common.dueDate")}>
               <Input
                 type="date"
                 value={form.due_on}
                 onChange={(event) => setForm({ ...form, due_on: event.target.value })}
               />
             </Field>
-            <Field label="Tax rate">
+            <Field label={t("finance.taxRate")}>
               <Input
                 type="number"
                 step="0.01"
@@ -707,13 +709,13 @@ function InvoiceDialog({
             </Field>
           </div>
 
-          <Field label="Lines">
+          <Field label={t("finance.lines")}>
             <div className="space-y-2">
               {lines.map((line, index) => (
                 <div key={index} className="flex gap-2">
                   <Input
                     className="flex-1"
-                    placeholder="Description"
+                    placeholder={t("common.description")}
                     value={line.description}
                     onChange={(event) => {
                       const next = [...lines];
