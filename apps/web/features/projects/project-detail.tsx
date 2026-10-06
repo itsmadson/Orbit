@@ -8,7 +8,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { api } from "@/lib/api";
-import { useI18n, useT } from "@/lib/i18n";
+import { useHumanize, useI18n, useT } from "@/lib/i18n";
 import { useItem, useList } from "@/lib/hooks";
 import { useSession } from "@/components/providers";
 import type { ProjectSummary, Task } from "@/lib/types";
@@ -22,7 +22,7 @@ import { TaskTable } from "@/features/tasks/task-list";
 import { ProjectCheckins } from "@/features/projects/checkins";
 import { TaskDialog } from "@/features/tasks/task-form";
 import { UserPicker } from "@/components/shared/pickers";
-import { cn, formatCurrency, formatDate, formatNumber, humanize, isOverdue } from "@/lib/utils";
+import { cn, formatCurrency, formatDate, formatNumber, isOverdue } from "@/lib/utils";
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip as ReTooltip } from "recharts";
 
 type ProjectDetail = ProjectSummary & {
@@ -44,6 +44,7 @@ type Overview = {
 };
 
 export function ProjectDetailView({ projectId }: { projectId: string }) {
+  const humanize = useHumanize();
   const t = useT();
   const { locale } = useI18n();
   const client = useQueryClient();
@@ -497,7 +498,7 @@ function Timeline({ project, tasks }: { project: ProjectDetail; tasks: Task[] })
               label={`${task.key} ${task.title}`}
               at={position(task.due_date!)}
               tone={
-                task.status === "done"
+                task.completed_at
                   ? "var(--positive)"
                   : isOverdue(task.due_date)
                     ? "var(--danger)"

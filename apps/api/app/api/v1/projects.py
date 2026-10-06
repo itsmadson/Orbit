@@ -22,6 +22,7 @@ from app.schemas.work import (
     ProjectUpdate,
 )
 from app.services import audit, graph, notifications
+from app.services import task_status
 
 router = APIRouter(prefix="/projects", tags=["projects"])
 
@@ -40,10 +41,10 @@ def project_stats(db, project: Project) -> dict:
     total = db.scalar(select(func.count(Task.id)).where(
         Task.project_id == project.id, Task.deleted_at.is_(None))) or 0
     done = db.scalar(select(func.count(Task.id)).where(
-        Task.project_id == project.id, Task.status == "done", Task.deleted_at.is_(None))) or 0
+        Task.project_id == project.id, task_status.is_done(), Task.deleted_at.is_(None))) or 0
     overdue = db.scalar(select(func.count(Task.id)).where(
         Task.project_id == project.id, Task.due_date < today,
-        Task.status.notin_(["done", "cancelled"]), Task.deleted_at.is_(None))) or 0
+        task_status.is_open(), Task.deleted_at.is_(None))) or 0
     spent = float(db.scalar(select(func.sum(Transaction.amount)).where(
         Transaction.project_id == project.id, Transaction.kind == "expense",
         Transaction.deleted_at.is_(None))) or 0)
@@ -439,7 +440,8 @@ def project_roadmap(project_id: uuid.UUID, db: DbSession,
             select(Task).where(Task.epic_id == epic.id, Task.deleted_at.is_(None))
             .order_by(Task.due_date.nulls_last(), Task.created_at)
         ).all()
-        done = sum(1 for c in children if c.status == "done")
+        categories = task_status.category_map(db, user.company_id)
+        done = sum(1 for c in children if categories.get(c.status) == "done")
         out.append(
             {
                 "id": str(epic.id), "key": epic.key, "title": epic.title, "status": epic.status,

@@ -1,6 +1,7 @@
 import { CalendarView } from "@/features/meetings/meetings";
+import { pageTitle } from "@/lib/page-title";
 
-export const metadata = { title: "Calendar" };
+export const generateMetadata = pageTitle("nav.calendar");
 
 export default function CalendarPage() {
   return <CalendarView />;

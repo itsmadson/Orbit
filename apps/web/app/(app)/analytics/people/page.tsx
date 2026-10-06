@@ -1,5 +1,6 @@
 import { PeopleAnalytics } from "@/features/analytics/analytics";
-export const metadata = { title: "People analytics" };
+import { pageTitle } from "@/lib/page-title";
+export const generateMetadata = pageTitle("analytics.title.people");
 export default function Page() {
   return <PeopleAnalytics />;
 }

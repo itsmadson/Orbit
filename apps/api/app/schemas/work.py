@@ -221,6 +221,8 @@ class TaskOut(ORMModel):
     created_at: datetime
     updated_at: datetime
     completed_at: datetime | None = None
+    #: Remote twins of this task on GitHub / GitLab / Jira.
+    external: list[dict] = []
 
 
 class TaskDetailOut(TaskOut):
@@ -261,3 +263,39 @@ class CheckinIn(BaseModel):
     risks: str | None = None
     next_steps: str | None = None
     period_end: date | None = None
+
+
+class TaskStatusIn(BaseModel):
+    name: str
+    name_fa: str | None = None
+    category: str = "open"
+    color: str = "#8b93a1"
+    #: Key of the column this one should sit after; omitted = end of its category.
+    after: str | None = None
+
+
+class TaskStatusUpdate(BaseModel):
+    name: str | None = None
+    name_fa: str | None = None
+    category: str | None = None
+    color: str | None = None
+
+
+class TaskStatusReorder(BaseModel):
+    keys: list[str]
+
+
+class TaskStatusDelete(BaseModel):
+    move_to: str | None = None
+
+
+class TaskStatusOut(BaseModel):
+    id: uuid.UUID
+    key: str
+    name: str
+    name_fa: str | None = None
+    category: str
+    color: str
+    order_index: int
+    is_system: bool
+    task_count: int = 0

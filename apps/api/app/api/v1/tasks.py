@@ -10,20 +10,52 @@ from app.core.deps import CurrentUser, DbSession, require
 from app.core.errors import BadRequest, NotFound
 from app.core.pagination import Paging, as_page
 from app.models.identity import User
-from app.models.work import Project, Sprint, Task, TaskDependency, TASK_STATUSES
+from app.models.system import ExternalIssue
+from app.models.work import Project, Sprint, Task, TaskDependency, TaskStatus, STATUS_CATEGORIES
 from app.schemas.common import Message
 from app.schemas.work import (
-    TaskBulkIn,
+    TaskBulkIn, TaskStatusDelete, TaskStatusIn, TaskStatusOut, TaskStatusReorder, TaskStatusUpdate,
     SprintIn, SprintOut, TaskDetailOut, TaskIn, TaskMove, TaskOut, TaskUpdate,
 )
+from app.core.i18n import tr
 from app.services import audit, graph, notifications
+from app.services.integrations import sync as integration_sync
+from app.services import task_status
 
 router = APIRouter(tags=["tasks"])
 
-STATUS_LABELS = {
-    "backlog": "Backlog", "todo": "To do", "in_progress": "In progress",
-    "in_review": "In review", "done": "Done", "cancelled": "Cancelled",
-}
+
+
+def _require_status(db, company_id: uuid.UUID, key: str) -> TaskStatus:
+    status = task_status.get(db, company_id, key)
+    if status is None:
+        raise BadRequest(f"Unknown status: {key}")
+    return status
+
+
+def _apply_status(task: Task, status: TaskStatus) -> None:
+    """Keep the timestamps honest whichever column the task lands in."""
+    now = datetime.now(UTC)
+    if status.category == "done":
+        if task.completed_at is None:
+            task.completed_at = now
+    else:
+        task.completed_at = None
+    if status.category == "started" and task.started_at is None:
+        task.started_at = now
+
+
+def _notify_moved(db, task: Task, user: User) -> None:
+    if not task.reporter_id:
+        return
+    reporter = db.get(User, task.reporter_id)
+    locale = reporter.locale if reporter else "en"
+    notifications.notify(
+        db, user_id=task.reporter_id, company_id=user.company_id, type="task_status",
+        title=tr(locale, "notify.task_moved", key=task.key,
+                 status=task_status.label(db, user.company_id, task.status, locale)),
+        entity_type="task", entity_id=task.id, url=f"/tasks/{task.id}", actor_id=user.id,
+    )
 
 
 def next_key(db, company_id: uuid.UUID, project: Project | None) -> str:
@@ -76,7 +108,36 @@ def serialize(db, task: Task) -> dict:
         "created_at": task.created_at,
         "updated_at": task.updated_at,
         "completed_at": task.completed_at,
+        "external": [
+            {"id": e.id, "provider": e.provider, "remote_key": e.remote_key,
+             "remote_id": e.remote_id, "url": e.url, "remote_state": e.remote_state,
+             "synced_at": e.synced_at}
+            for e in db.scalars(select(ExternalIssue).where(ExternalIssue.task_id == task.id)).all()
+        ],
     }
+
+
+def _expand_statuses(db, user: User, values: list[str] | None) -> list[str] | None:
+    """Status filter values may be keys or categories; anything else is an error.
+
+    Silently returning nothing for ``status=open`` reads as "there are none",
+    which is worse than a clear message naming the valid keys.
+    """
+    if not values:
+        return values
+    statuses = task_status.all_statuses(db, user.company_id)
+    keys = {s.key for s in statuses}
+    out: list[str] = []
+    for value in values:
+        if value in keys:
+            out.append(value)
+        elif value in STATUS_CATEGORIES:
+            out += [s.key for s in statuses if s.category == value]
+        else:
+            raise BadRequest(
+                f"Unknown status: {value}. Valid: {', '.join(sorted(keys))}; "
+                f"or a category: {', '.join(STATUS_CATEGORIES)}")
+    return out or ["__none__"]
 
 
 def _filtered(db, user: User, **filters):
@@ -103,9 +164,9 @@ def _filtered(db, user: User, **filters):
         stmt = stmt.where(Task.labels.contains([filters["label"]]))
     if filters.get("overdue"):
         stmt = stmt.where(Task.due_date < date.today(),
-                          Task.status.notin_(["done", "cancelled"]))
+                          task_status.is_open())
     if filters.get("open_only"):
-        stmt = stmt.where(Task.status.notin_(["done", "cancelled"]))
+        stmt = stmt.where(task_status.is_open())
     if filters.get("no_sprint"):
         stmt = stmt.where(Task.sprint_id.is_(None))
     return stmt
@@ -132,7 +193,8 @@ def list_tasks(
     sort: str = "updated",
 ):
     stmt = _filtered(
-        db, user, q=q, project_id=project_id, status=status, type=type, priority=priority,
+        db, user, q=q, project_id=project_id, status=_expand_statuses(db, user, status),
+        type=type, priority=priority,
         assignee_id=assignee_id or (user.id if mine else None), sprint_id=sprint_id,
         epic_id=epic_id, label=label, overdue=overdue, open_only=open_only, no_sprint=no_sprint,
     )
@@ -159,9 +221,10 @@ def board(
     mine: bool = False,
 ):
     columns = []
-    for status in TASK_STATUSES:
-        if status == "cancelled":
+    for column in task_status.all_statuses(db, user.company_id):
+        if column.category == "cancelled":
             continue
+        status = column.key
         stmt = _filtered(
             db, user, project_id=project_id, status=[status], sprint_id=sprint_id,
             assignee_id=assignee_id or (user.id if mine else None),
@@ -170,7 +233,13 @@ def board(
         columns.append(
             {
                 "key": status,
-                "label": STATUS_LABELS[status],
+                "id": column.id,
+                "label": column.name,
+                "name": column.name,
+                "name_fa": column.name_fa,
+                "color": column.color,
+                "category": column.category,
+                "is_system": column.is_system,
                 "tasks": [serialize(db, t) for t in rows],
                 "count": len(rows),
             }
@@ -206,12 +275,14 @@ def create_task(payload: TaskIn, db: DbSession,
     if payload.project_id:
         project = get_or_404(db, Project, payload.project_id, user.company_id, "Project")
     data = payload.model_dump(exclude={"depends_on"})
+    initial = _require_status(db, user.company_id, payload.status)
     task = Task(
         company_id=user.company_id,
         key=next_key(db, user.company_id, project),
         reporter_id=user.id,
         **data,
     )
+    _apply_status(task, initial)
     db.add(task)
     db.flush()
     for dep_id in payload.depends_on:
@@ -243,15 +314,12 @@ def update_task(task_id: uuid.UUID, payload: TaskUpdate, db: DbSession,
     changes = payload.model_dump(exclude_unset=True)
     before = {k: getattr(task, k) for k in changes}
     previous_assignee = task.assignee_id
+    target = _require_status(db, user.company_id, changes["status"]) if changes.get("status") else None
+    changes = {k: v for k, v in changes.items() if not (k == "status" and v is None)}
     for field, value in changes.items():
         setattr(task, field, value)
-    if "status" in changes:
-        if changes["status"] == "done" and task.completed_at is None:
-            task.completed_at = datetime.now(UTC)
-        elif changes["status"] != "done":
-            task.completed_at = None
-        if changes["status"] == "in_progress" and task.started_at is None:
-            task.started_at = datetime.now(UTC)
+    if target is not None:
+        _apply_status(task, target)
     db.flush()
     diff = audit.diff(before, changes)
     if diff:
@@ -271,13 +339,11 @@ def update_task(task_id: uuid.UUID, payload: TaskUpdate, db: DbSession,
             body=f"{user.full_name} assigned this {task.type} to you.",
             entity_type="task", entity_id=task.id, url=f"/tasks/{task.id}", actor_id=user.id,
         )
-    if "status" in diff and task.reporter_id:
-        notifications.notify(
-            db, user_id=task.reporter_id, company_id=user.company_id, type="task_status",
-            title=f"{task.key} moved to {STATUS_LABELS.get(task.status, task.status)}",
-            entity_type="task", entity_id=task.id, url=f"/tasks/{task.id}", actor_id=user.id,
-        )
+    if "status" in diff:
+        _notify_moved(db, task, user)
     _recalculate_progress(db, task)
+    if diff:
+        integration_sync.push_task(db, task)
     return serialize(db, task)
 
 
@@ -286,15 +352,11 @@ def move_task(task_id: uuid.UUID, payload: TaskMove, db: DbSession,
               user: Annotated[User, Depends(require("tasks.write"))]):
     """Drag-and-drop target: change column and position in one call."""
     task = get_or_404(db, Task, task_id, user.company_id, "Task")
-    if payload.status not in TASK_STATUSES:
-        raise BadRequest(f"Unknown status: {payload.status}")
+    target = _require_status(db, user.company_id, payload.status)
     old_status = task.status
     task.status = payload.status
     task.order_index = payload.order_index
-    if payload.status == "done" and task.completed_at is None:
-        task.completed_at = datetime.now(UTC)
-    if payload.status != "done":
-        task.completed_at = None
+    _apply_status(task, target)
     siblings = db.scalars(
         select(Task).where(
             Task.company_id == user.company_id, Task.status == payload.status,
@@ -308,12 +370,8 @@ def move_task(task_id: uuid.UUID, payload: TaskMove, db: DbSession,
         audit.record(db, actor=user, action="status_changed", entity_type="task",
                      entity_id=task.id, summary=f"{task.key} → {payload.status}",
                      changes={"status": {"from": old_status, "to": payload.status}})
-        if task.reporter_id:
-            notifications.notify(
-                db, user_id=task.reporter_id, company_id=user.company_id, type="task_status",
-                title=f"{task.key} moved to {STATUS_LABELS.get(task.status, task.status)}",
-                entity_type="task", entity_id=task.id, url=f"/tasks/{task.id}", actor_id=user.id,
-            )
+        _notify_moved(db, task, user)
+        integration_sync.push_task(db, task)
     _recalculate_progress(db, task)
     return serialize(db, task)
 
@@ -326,9 +384,9 @@ def _recalculate_progress(db, task: Task) -> None:
         return
     total = db.scalar(select(func.count(Task.id)).where(
         Task.project_id == project.id, Task.deleted_at.is_(None),
-        Task.status != "cancelled")) or 0
+        ~task_status.is_cancelled())) or 0
     done = db.scalar(select(func.count(Task.id)).where(
-        Task.project_id == project.id, Task.status == "done", Task.deleted_at.is_(None))) or 0
+        Task.project_id == project.id, task_status.is_done(), Task.deleted_at.is_(None))) or 0
     project.progress = round(done / total * 100) if total else 0
 
 
@@ -435,8 +493,7 @@ def bulk_update(payload: TaskBulkIn, db: DbSession,
         raise NotFound("Task")
 
     changes = payload.model_dump(exclude_unset=True, exclude={"ids", "action"})
-    if payload.status and payload.status not in TASK_STATUSES:
-        raise BadRequest(f"Unknown status: {payload.status}")
+    target = _require_status(db, user.company_id, payload.status) if payload.status else None
 
     now = datetime.now(UTC)
     touched = 0
@@ -453,10 +510,8 @@ def bulk_update(payload: TaskBulkIn, db: DbSession,
                 task.labels = [item for item in (task.labels or []) if item not in value]
                 continue
             setattr(task, field, value)
-        if payload.status == "done" and not task.completed_at:
-            task.completed_at = now
-        if payload.status and payload.status != "done":
-            task.completed_at = None
+        if target is not None:
+            _apply_status(task, target)
         if payload.assignee_id:
             graph.link(db, company_id=user.company_id, from_type="task", from_id=task.id,
                        rel_type="assigned_to", to_type="user", to_id=payload.assignee_id)
@@ -480,3 +535,108 @@ def bulk_update(payload: TaskBulkIn, db: DbSession,
         )
     return Message(message=summary)
 
+
+
+# ---------------------------------------------------------------- statuses
+def _status_out(db, status: TaskStatus) -> dict:
+    return {
+        "id": status.id, "key": status.key, "name": status.name, "name_fa": status.name_fa,
+        "category": status.category, "color": status.color,
+        "order_index": status.order_index, "is_system": status.is_system,
+        "task_count": db.scalar(select(func.count(Task.id)).where(
+            Task.company_id == status.company_id, Task.status == status.key,
+            Task.deleted_at.is_(None))) or 0,
+    }
+
+
+@router.get("/task-statuses", response_model=list[TaskStatusOut])
+def list_statuses(db: DbSession, user: Annotated[User, Depends(require("tasks.read"))]):
+    """Every board column for this company, in board order."""
+    return [_status_out(db, s) for s in task_status.all_statuses(db, user.company_id)]
+
+
+@router.post("/task-statuses", response_model=TaskStatusOut, status_code=201)
+def create_status(payload: TaskStatusIn, db: DbSession,
+                  user: Annotated[User, Depends(require("tasks.manage"))]):
+    if payload.category not in STATUS_CATEGORIES:
+        raise BadRequest(f"Unknown category: {payload.category}")
+    existing = task_status.all_statuses(db, user.company_id)
+    if len(existing) >= 24:
+        raise BadRequest("A board can have at most 24 statuses")
+    if payload.after:
+        anchor = next((s for s in existing if s.key == payload.after), None)
+        position = (existing.index(anchor) + 1) if anchor else len(existing)
+    else:
+        # A new column belongs with its own kind: after the last one of its category.
+        same = [i for i, s in enumerate(existing) if s.category == payload.category]
+        position = (same[-1] + 1) if same else len(existing)
+    status = TaskStatus(
+        company_id=user.company_id, key=task_status.unique_key(db, user.company_id, payload.name),
+        name=payload.name.strip(), name_fa=(payload.name_fa or "").strip() or None,
+        category=payload.category, color=payload.color, is_system=False,
+    )
+    db.add(status)
+    ordered = existing[:position] + [status] + existing[position:]
+    for index, item in enumerate(ordered):
+        item.order_index = index
+    db.flush()
+    audit.record(db, actor=user, action="created", entity_type="task_status",
+                 entity_id=status.id, summary=f"Added task status {status.name}")
+    return _status_out(db, status)
+
+
+@router.post("/task-statuses/reorder", response_model=list[TaskStatusOut])
+def reorder_statuses(payload: TaskStatusReorder, db: DbSession,
+                     user: Annotated[User, Depends(require("tasks.manage"))]):
+    statuses = {s.key: s for s in task_status.all_statuses(db, user.company_id)}
+    ordered = [statuses.pop(key) for key in payload.keys if key in statuses]
+    ordered += sorted(statuses.values(), key=lambda s: s.order_index)
+    for index, status in enumerate(ordered):
+        status.order_index = index
+    db.flush()
+    return [_status_out(db, s) for s in ordered]
+
+
+@router.patch("/task-statuses/{status_id}", response_model=TaskStatusOut)
+def update_status(status_id: uuid.UUID, payload: TaskStatusUpdate, db: DbSession,
+                  user: Annotated[User, Depends(require("tasks.manage"))]):
+    status = get_or_404(db, TaskStatus, status_id, user.company_id, "Status")
+    changes = payload.model_dump(exclude_unset=True)
+    if "category" in changes:
+        if changes["category"] not in STATUS_CATEGORIES:
+            raise BadRequest(f"Unknown category: {changes['category']}")
+        if status.is_system and changes["category"] != status.category:
+            raise BadRequest("The meaning of a built-in status cannot be changed")
+    if "name" in changes and not (changes["name"] or "").strip():
+        raise BadRequest("A status needs a name")
+    for field, value in changes.items():
+        setattr(status, field, value.strip() if isinstance(value, str) else value)
+    db.flush()
+    return _status_out(db, status)
+
+
+@router.delete("/task-statuses/{status_id}", response_model=Message)
+def delete_status(status_id: uuid.UUID, db: DbSession,
+                  user: Annotated[User, Depends(require("tasks.manage"))],
+                  move_to: str | None = None):
+    """Remove a custom column. Its tasks move to ``move_to`` first — never orphaned."""
+    status = get_or_404(db, TaskStatus, status_id, user.company_id, "Status")
+    if status.is_system:
+        raise BadRequest("Built-in statuses cannot be deleted")
+    tasks = db.scalars(select(Task).where(
+        Task.company_id == user.company_id, Task.status == status.key)).all()
+    if tasks:
+        if not move_to or move_to == status.key:
+            raise BadRequest("Choose a status to move this column's tasks to")
+        target = _require_status(db, user.company_id, move_to)
+        for task in tasks:
+            task.status = target.key
+            _apply_status(task, target)
+    name = status.name
+    db.delete(status)
+    db.flush()
+    for project_id in {t.project_id for t in tasks if t.project_id}:
+        _recalculate_progress(db, next(t for t in tasks if t.project_id == project_id))
+    audit.record(db, actor=user, action="deleted", entity_type="task_status",
+                 summary=f"Removed task status {name}", changes={"moved": len(tasks)})
+    return Message(message="Status deleted")

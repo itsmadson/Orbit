@@ -23,12 +23,13 @@ from app.models.people import (
     OnboardingItem, Skill, UserSkill,
 )
 from app.models.system import (
-    AiConversation, Attachment, AuditLog, Comment, Integration, Notification, Relation,
+    AiConversation, Attachment, AuditLog, Comment, ExternalIssue, Integration,
+    IntegrationLink, Notification, Relation,
     SavedView,
 )
 from app.models.work import (
     Milestone, Project, ProjectCheckin, ProjectMember, Sprint, Sprint as SprintModel,
-    Task, TaskDependency,
+    Task, TaskDependency, TaskStatus,
 )
 
 __all__ = [
@@ -50,5 +51,5 @@ __all__ = [
     "Skill", "UserSkill", "LeaveRequest", "AttendanceRecord", "OnboardingItem",
     "Goal", "KeyResult",
     "Comment", "Attachment", "Notification", "AuditLog", "Relation", "Integration",
-    "AiConversation",
+    "AiConversation", "TaskStatus", "IntegrationLink", "ExternalIssue",
 ]

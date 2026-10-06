@@ -29,6 +29,10 @@ async function proxy(request: NextRequest, path: string[]) {
 
   const headers: Record<string, string> = {};
   if (contentType) headers["content-type"] = contentType;
+  // The API writes some text itself (errors, insights); tell it which language
+  // this browser is reading in.
+  const locale = store.get("orbit_locale")?.value;
+  if (locale) headers["x-orbit-locale"] = locale;
   const forwardedFor = request.headers.get("x-forwarded-for");
   if (forwardedFor) headers["x-forwarded-for"] = forwardedFor;
   const userAgent = request.headers.get("user-agent");
@@ -47,7 +51,10 @@ async function proxy(request: NextRequest, path: string[]) {
     upstream = await send(access);
   } catch {
     return NextResponse.json(
-      { code: "upstream_unavailable", message: "The ORBIT API is not reachable." },
+      {
+        code: "upstream_unavailable",
+        message: locale === "fa" ? "سرور ORBIT در دسترس نیست." : "The ORBIT API is not reachable.",
+      },
       { status: 502 },
     );
   }

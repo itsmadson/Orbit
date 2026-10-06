@@ -1,6 +1,7 @@
 import { WorkflowsView } from "@/features/office/office";
+import { pageTitle } from "@/lib/page-title";
 
-export const metadata = { title: "Workflows" };
+export const generateMetadata = pageTitle("nav.workflows");
 
 export default function WorkflowsPage() {
   return <WorkflowsView />;

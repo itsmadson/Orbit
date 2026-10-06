@@ -4,7 +4,7 @@ import * as React from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { Boxes, Laptop, Package, Plus, Truck } from "lucide-react";
 import { api } from "@/lib/api";
-import { useI18n, useT } from "@/lib/i18n";
+import { useHumanize, useI18n, useT } from "@/lib/i18n";
 import { useCreate, useCreateParam, useDebounced, useItem, useList } from "@/lib/hooks";
 import { useSession } from "@/components/providers";
 import { MetricCard, PageHeader, Section } from "@/components/shared/page";
@@ -36,6 +36,7 @@ const CATEGORIES = ["laptop", "server", "phone", "vehicle", "license", "domain",
 const STATUSES = ["in_use", "available", "maintenance", "retired", "lost"];
 
 export function AssetsView() {
+  const humanize = useHumanize();
   const t = useT();
   const { locale } = useI18n();
   const { can, company } = useSession();
@@ -90,7 +91,7 @@ export function AssetsView() {
     },
     {
       key: "cost",
-      header: "Cost",
+      header: t("assets.cost"),
       align: "end",
       cell: (row) => (
         <span className="text-[12px]">
@@ -104,7 +105,7 @@ export function AssetsView() {
     <div>
       <PageHeader
         title={t("assets.title")}
-        subtitle="Everything the company owns, and who holds it"
+        subtitle={t("assets.subtitle")}
         actions={
           can("assets.write") ? (
             <Button variant="primary" onClick={() => setCreateOpen(true)}>
@@ -121,9 +122,9 @@ export function AssetsView() {
           label={t("assets.totalValue")}
           value={formatCurrency(summary.data?.total_value ?? 0, company.currency, locale, true)}
         />
-        <MetricCard label="In use" value={summary.data?.by_status?.in_use ?? 0} tone="accent" />
+        <MetricCard label={t("assets.inUse")} value={summary.data?.by_status?.in_use ?? 0} tone="accent" />
         <MetricCard
-          label="Maintenance"
+          label={t("assets.maintenance")}
           value={summary.data?.by_status?.maintenance ?? 0}
           tone={summary.data?.by_status?.maintenance ? "warning" : "default"}
         />
@@ -159,6 +160,7 @@ function AssetDialog({
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }) {
+  const humanize = useHumanize();
   const t = useT();
   const vendors = useItem<{ id: string; name: string }[]>("/finance/vendors");
   const [form, setForm] = React.useState({
@@ -178,7 +180,7 @@ function AssetDialog({
 
   const create = useCreate<Asset>("/assets", {
     invalidate: ["/assets", "/assets/summary"],
-    success: "Asset registered",
+    success: t("assets.registered"),
     onDone: () => onOpenChange(false),
   });
 
@@ -222,7 +224,7 @@ function AssetDialog({
                 options={STATUSES.map((value) => ({ value, label: humanize(value) }))}
               />
             </Field>
-            <Field label="Asset tag">
+            <Field label={t("assets.tag")}>
               <Input value={form.tag} onChange={(event) => setForm({ ...form, tag: event.target.value })} />
             </Field>
             <Field label={t("assets.serial")}>
@@ -240,14 +242,14 @@ function AssetDialog({
                 onChange={(event) => setForm({ ...form, location: event.target.value })}
               />
             </Field>
-            <Field label="Purchase date">
+            <Field label={t("assets.purchaseDate")}>
               <Input
                 type="date"
                 value={form.purchase_date}
                 onChange={(event) => setForm({ ...form, purchase_date: event.target.value })}
               />
             </Field>
-            <Field label="Cost">
+            <Field label={t("assets.cost")}>
               <Input
                 type="number"
                 value={form.cost}
@@ -306,6 +308,7 @@ type PurchaseOrder = {
 };
 
 export function ProcurementView() {
+  const humanize = useHumanize();
   const t = useT();
   const { locale } = useI18n();
   const client = useQueryClient();
@@ -336,7 +339,7 @@ export function ProcurementView() {
     },
     {
       key: "expected",
-      header: "Expected",
+      header: t("procurement.expected"),
       align: "end",
       cell: (row) => <span className="text-[12px] text-muted">{formatDate(row.expected_on, locale)}</span>,
     },
@@ -362,7 +365,7 @@ export function ProcurementView() {
     <div>
       <PageHeader
         title={t("procurement.title")}
-        subtitle="Purchase request → approval → order → delivery → invoice → payment"
+        subtitle={t("procurement.subtitle")}
       />
 
       <Tabs defaultValue="orders">
@@ -395,7 +398,7 @@ export function ProcurementView() {
                 <EmptyState
                   icon={Package}
                   title={t("common.empty")}
-                  description="Approved purchase requests become orders here."
+                  description={t("procurement.emptyHint")}
                 />
               }
             />
@@ -412,7 +415,7 @@ export function ProcurementView() {
                 </div>
                 <p className="mt-1 text-[12px] text-muted">{vendor.email ?? "—"}</p>
                 <div className="mt-3 flex items-center justify-between text-[12px]">
-                  <span className="text-muted">Total spend</span>
+                  <span className="text-muted">{t("procurement.totalSpend")}</span>
                   <span className="font-medium">
                     {formatCurrency(vendor.total_spend, company.currency, locale, true)}
                   </span>

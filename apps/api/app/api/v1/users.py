@@ -23,6 +23,7 @@ from app.schemas.identity import (
     UserCreate, UserOut, UserUpdate,
 )
 from app.services import audit
+from app.services import task_status
 
 router = APIRouter(tags=["people"])
 
@@ -172,13 +173,13 @@ def user_profile(user_id: uuid.UUID, db: DbSession, current: CurrentUser):
     open_tasks = db.scalar(
         select(func.count(Task.id)).where(
             Task.assignee_id == target.id,
-            Task.status.notin_(["done", "cancelled"]),
+            task_status.is_open(),
             Task.deleted_at.is_(None),
         )
     ) or 0
     done_tasks = db.scalar(
         select(func.count(Task.id)).where(
-            Task.assignee_id == target.id, Task.status == "done", Task.deleted_at.is_(None)
+            Task.assignee_id == target.id, task_status.is_done(), Task.deleted_at.is_(None)
         )
     ) or 0
     reports = db.scalars(

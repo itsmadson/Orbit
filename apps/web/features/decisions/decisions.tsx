@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useQueryClient } from "@tanstack/react-query";
 import { Check, Gavel, Plus, X } from "lucide-react";
 import { api } from "@/lib/api";
-import { useI18n, useT } from "@/lib/i18n";
+import { useHumanize, useI18n, useT } from "@/lib/i18n";
 import { useCreate, useCreateParam, useDebounced, useItem, useList } from "@/lib/hooks";
 import { useSession } from "@/components/providers";
 import type { Decision } from "@/lib/types";
@@ -23,6 +23,7 @@ import { cn, formatDate, humanize } from "@/lib/utils";
 const STATUSES = ["proposed", "discussion", "decided", "revisited", "archived"];
 
 export function DecisionsView() {
+  const humanize = useHumanize();
   const t = useT();
   const { locale } = useI18n();
   const { can } = useSession();
@@ -41,7 +42,7 @@ export function DecisionsView() {
     <div>
       <PageHeader
         title={t("decisions.title")}
-        subtitle="Institutional memory: what was decided, why, and what followed"
+        subtitle={t("decisions.subtitle")}
         actions={
           can("decisions.write") ? (
             <Button variant="primary" onClick={() => setCreateOpen(true)}>
@@ -132,6 +133,7 @@ export function DecisionDialog({
   meetingId?: string;
   projectId?: string;
 }) {
+  const humanize = useHumanize();
   const t = useT();
   const projects = useProjects();
   const [form, setForm] = React.useState({
@@ -151,7 +153,7 @@ export function DecisionDialog({
 
   const create = useCreate<Decision>("/decisions", {
     invalidate: ["/decisions", "dashboard"],
-    success: "Decision recorded",
+    success: t("decisions.recorded"),
     onDone: () => onOpenChange(false),
   });
 
@@ -160,7 +162,7 @@ export function DecisionDialog({
       <DialogContent size="lg">
         <DialogHeader
           title={t("decisions.new")}
-          description="Capture the problem, the options considered and the reasoning."
+          description={t("decisions.formHint")}
         />
         <form
           className="space-y-3"
@@ -204,7 +206,7 @@ export function DecisionDialog({
                   <div className="flex items-center gap-2">
                     <Input
                       value={option.title}
-                      placeholder={`Option ${index + 1}`}
+                      placeholder={t("decisions.option", { n: index + 1 })}
                       onChange={(event) => {
                         const next = [...options];
                         next[index] = { ...option, title: event.target.value };
@@ -213,7 +215,7 @@ export function DecisionDialog({
                     />
                     <button
                       type="button"
-                      title="Chosen"
+                      title={t("decisions.chosen")}
                       onClick={() => {
                         setOptions(
                           options.map((item, cursor) => ({ ...item, chosen: cursor === index })),
@@ -239,7 +241,7 @@ export function DecisionDialog({
                   <div className="mt-2 grid gap-2 sm:grid-cols-2">
                     <Input
                       value={option.pros}
-                      placeholder="Pros"
+                      placeholder={t("decisions.pros")}
                       onChange={(event) => {
                         const next = [...options];
                         next[index] = { ...option, pros: event.target.value };
@@ -248,7 +250,7 @@ export function DecisionDialog({
                     />
                     <Input
                       value={option.cons}
-                      placeholder="Cons"
+                      placeholder={t("decisions.cons")}
                       onChange={(event) => {
                         const next = [...options];
                         next[index] = { ...option, cons: event.target.value };
@@ -329,6 +331,7 @@ export function DecisionDialog({
 }
 
 export function DecisionDetail({ decisionId }: { decisionId: string }) {
+  const humanize = useHumanize();
   const t = useT();
   const { locale } = useI18n();
   const client = useQueryClient();

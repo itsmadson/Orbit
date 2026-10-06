@@ -1,5 +1,6 @@
 import { FinanceAnalytics } from "@/features/analytics/analytics";
-export const metadata = { title: "Finance analytics" };
+import { pageTitle } from "@/lib/page-title";
+export const generateMetadata = pageTitle("analytics.title.finance");
 export default function Page() {
   return <FinanceAnalytics />;
 }

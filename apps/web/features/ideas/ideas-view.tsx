@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useQueryClient } from "@tanstack/react-query";
 import { ArrowRight, Lightbulb, Plus, ThumbsUp } from "lucide-react";
 import { api } from "@/lib/api";
-import { useI18n, useT } from "@/lib/i18n";
+import { useHumanize, useI18n, useT } from "@/lib/i18n";
 import { useCreate, useCreateParam, useDebounced, useItem, useList } from "@/lib/hooks";
 import { useSession } from "@/components/providers";
 import type { Idea } from "@/lib/types";
@@ -25,6 +25,7 @@ const PIPELINE_ORDER = [
 ];
 
 export function IdeasView() {
+  const humanize = useHumanize();
   const t = useT();
   const { locale } = useI18n();
   const { can } = useSession();
@@ -48,7 +49,7 @@ export function IdeasView() {
     <div>
       <PageHeader
         title={t("ideas.title")}
-        subtitle="Innovation pipeline — from raw idea to shipped product"
+        subtitle={t("ideas.subtitle")}
         actions={
           can("ideas.write") ? (
             <Button variant="primary" onClick={() => setCreateOpen(true)}>
@@ -212,6 +213,7 @@ export function IdeaDialog({
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }) {
+  const humanize = useHumanize();
   const t = useT();
   const [form, setForm] = React.useState({
     title: "",
@@ -228,7 +230,7 @@ export function IdeaDialog({
 
   const create = useCreate<Idea>("/ideas", {
     invalidate: ["/ideas", "/ideas/pipeline", "dashboard"],
-    success: "Idea submitted",
+    success: t("ideas.submitted"),
     onDone: () => onOpenChange(false),
   });
 
@@ -237,7 +239,7 @@ export function IdeaDialog({
       <DialogContent size="lg">
         <DialogHeader
           title={t("ideas.new")}
-          description="Ideas are scored on value, feasibility, impact and effort."
+          description={t("ideas.formHint")}
         />
         <form
           className="space-y-3"
@@ -261,7 +263,7 @@ export function IdeaDialog({
             <Textarea
               value={form.description}
               onChange={(event) => setForm({ ...form, description: event.target.value })}
-              placeholder="What problem does this solve, and for whom?"
+              placeholder={t("ideas.problemPlaceholder")}
             />
           </Field>
           <div className="grid gap-3 sm:grid-cols-2">
@@ -305,7 +307,7 @@ export function IdeaDialog({
           <Field label={t("common.tags")}>
             <TagInput value={form.tags} onChange={(tags) => setForm({ ...form, tags })} />
           </Field>
-          <Field label="Contributors">
+          <Field label={t("ideas.contributors")}>
             <MultiUserPicker
               value={form.contributor_ids}
               onChange={(contributor_ids) => setForm({ ...form, contributor_ids })}

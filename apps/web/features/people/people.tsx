@@ -9,7 +9,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { api } from "@/lib/api";
-import { useI18n, useT } from "@/lib/i18n";
+import { useHumanize, useI18n, useT } from "@/lib/i18n";
 import { useCreate, useCreateParam, useDebounced, useItem, useList } from "@/lib/hooks";
 import { useSession } from "@/components/providers";
 import { MetricCard, PageHeader, Section } from "@/components/shared/page";
@@ -53,6 +53,7 @@ function generatePassword() {
 }
 
 export function EmployeesView() {
+  const humanize = useHumanize();
   const t = useT();
   const { locale } = useI18n();
   const { can } = useSession();
@@ -80,7 +81,7 @@ export function EmployeesView() {
         </span>
       ),
     },
-    { key: "title", header: "Title", cell: (row) => <span className="text-[12px] text-muted">{row.title ?? "—"}</span> },
+    { key: "title", header: t("people.jobTitle"), cell: (row) => <span className="text-[12px] text-muted">{row.title ?? "—"}</span> },
     {
       key: "department",
       header: t("common.department"),
@@ -219,7 +220,7 @@ function EmployeeDialog({
 
   const create = useCreate<Employee>("/users", {
     invalidate: ["/users", "directory", "/hr/summary"],
-    success: "Employee added",
+    success: t("people.added"),
     onDone: () => onOpenChange(false),
   });
 
@@ -276,7 +277,7 @@ function EmployeeDialog({
                 </Button>
               </div>
             </Field>
-            <Field label="Title">
+            <Field label={t("people.jobTitle")}>
               <Input
                 value={form.title}
                 onChange={(event) => setForm({ ...form, title: event.target.value })}
@@ -324,6 +325,7 @@ function EmployeeDialog({
 }
 
 export function EmployeeProfile({ userId }: { userId: string }) {
+  const humanize = useHumanize();
   const t = useT();
   const { locale } = useI18n();
   const { company, user: me, can } = useSession();
@@ -380,8 +382,8 @@ export function EmployeeProfile({ userId }: { userId: string }) {
       />
 
       <div className="mb-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-        <MetricCard label="Open tasks" value={data.stats.open_tasks} icon={<Briefcase className="h-3.5 w-3.5" />} />
-        <MetricCard label="Completed" value={data.stats.done_tasks} tone="positive" />
+        <MetricCard label={t("people.openTasks")} value={data.stats.open_tasks} icon={<Briefcase className="h-3.5 w-3.5" />} />
+        <MetricCard label={t("status.completed")} value={data.stats.done_tasks} tone="positive" />
         <MetricCard label={t("nav.projects")} value={data.projects.length} />
         <MetricCard
           label={t("people.hiredOn")}
@@ -475,7 +477,7 @@ export function EmployeeProfile({ userId }: { userId: string }) {
               <DetailRow label={t("people.employment")}>{humanize(person.employment_type)}</DetailRow>
               <DetailRow label={t("common.language")}>{person.locale}</DetailRow>
               {data.salary ? (
-                <DetailRow label="Salary">
+                <DetailRow label={t("people.salary")}>
                   {formatCurrency(data.salary, company.currency, locale, true)}
                 </DetailRow>
               ) : null}
@@ -513,6 +515,7 @@ export function EmployeeProfile({ userId }: { userId: string }) {
  * create a user but never change their role or switch them off again.
  */
 function AccountActions({ person, isSelf }: { person: any; isSelf: boolean }) {
+  const humanize = useHumanize();
   const t = useT();
   const { can } = useSession();
   const client = useQueryClient();
@@ -546,7 +549,7 @@ function AccountActions({ person, isSelf }: { person: any; isSelf: boolean }) {
       refresh();
     } catch (error: any) {
       setRole(person.role);
-      toast.error(error?.message ?? "Failed");
+      toast.error(error?.message ?? t("common.requestFailed"));
     } finally {
       setBusy(false);
     }
@@ -569,7 +572,7 @@ function AccountActions({ person, isSelf }: { person: any; isSelf: boolean }) {
       else await api.patch(`/users/${person.id}`, { is_active: true });
       refresh();
     } catch (error: any) {
-      toast.error(error?.message ?? "Failed");
+      toast.error(error?.message ?? t("common.requestFailed"));
     } finally {
       setBusy(false);
     }
@@ -620,6 +623,7 @@ function AccountActions({ person, isSelf }: { person: any; isSelf: boolean }) {
 }
 
 export function HrView() {
+  const humanize = useHumanize();
   const t = useT();
   const { locale } = useI18n();
   const client = useQueryClient();
@@ -656,7 +660,7 @@ export function HrView() {
     <div>
       <PageHeader
         title={t("hr.title")}
-        subtitle="People operations: leave, attendance and onboarding"
+        subtitle={t("hr.subtitle")}
         actions={
           <>
             <Button variant="secondary" onClick={checkIn}>
@@ -779,6 +783,7 @@ function LeaveDialog({
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }) {
+  const humanize = useHumanize();
   const t = useT();
   const [form, setForm] = React.useState({
     type: "vacation",
@@ -789,7 +794,7 @@ function LeaveDialog({
 
   const create = useCreate("/hr/leave", {
     invalidate: ["/hr/leave", "/hr/summary"],
-    success: "Leave requested",
+    success: t("hr.leaveRequested"),
     onDone: () => onOpenChange(false),
   });
 
@@ -815,7 +820,7 @@ function LeaveDialog({
             />
           </Field>
           <div className="grid gap-3 sm:grid-cols-2">
-            <Field label="From">
+            <Field label={t("common.from")}>
               <Input
                 type="date"
                 required
@@ -832,7 +837,7 @@ function LeaveDialog({
               />
             </Field>
           </div>
-          <Field label="Reason">
+          <Field label={t("common.reason")}>
             <Input
               value={form.reason}
               onChange={(event) => setForm({ ...form, reason: event.target.value })}

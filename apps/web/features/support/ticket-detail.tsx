@@ -5,7 +5,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { Lock, Send, Wrench } from "lucide-react";
 import { api } from "@/lib/api";
-import { useT } from "@/lib/i18n";
+import { useHumanize, useT } from "@/lib/i18n";
 import { useItem } from "@/lib/hooks";
 import { useSession } from "@/components/providers";
 import { PageHeader, Section } from "@/components/shared/page";
@@ -30,6 +30,7 @@ type Message = {
 
 export function TicketDetail({ ticketId }: { ticketId: string }) {
   const t = useT();
+  const humanize = useHumanize();
   const client = useQueryClient();
   const { can, user } = useSession();
   const ticket = useItem<Ticket>(`/tickets/${ticketId}`);
@@ -55,7 +56,7 @@ export function TicketDetail({ ticketId }: { ticketId: string }) {
       await api.patch(`/tickets/${ticketId}`, changes);
       refresh();
     } catch (error: any) {
-      toast.error(error?.message ?? "Failed");
+      toast.error(error?.message ?? t("common.requestFailed"));
     } finally {
       setBusy(false);
     }
@@ -70,7 +71,7 @@ export function TicketDetail({ ticketId }: { ticketId: string }) {
       setInternal(false);
       refresh();
     } catch (error: any) {
-      toast.error(error?.message ?? "Failed");
+      toast.error(error?.message ?? t("common.requestFailed"));
     } finally {
       setBusy(false);
     }
@@ -82,7 +83,7 @@ export function TicketDetail({ ticketId }: { ticketId: string }) {
       toast.success(result.key);
       refresh();
     } catch (error: any) {
-      toast.error(error?.message ?? "Failed");
+      toast.error(error?.message ?? t("common.requestFailed"));
     }
   }
 
@@ -239,11 +240,11 @@ export function TicketDetail({ ticketId }: { ticketId: string }) {
                     className="h-7 w-32"
                     options={["urgent", "high", "normal", "low"].map((value) => ({
                       value,
-                      label: value,
+                      label: humanize(value),
                     }))}
                   />
                 ) : (
-                  <span className="text-[12px]">{data.priority}</span>
+                  <span className="text-[12px]">{humanize(data.priority)}</span>
                 )}
               </DetailRow>
               {isStaff ? (

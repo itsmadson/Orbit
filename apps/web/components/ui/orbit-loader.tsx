@@ -1,5 +1,6 @@
 "use client";
 
+import { useT } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 
 /**
@@ -17,6 +18,7 @@ export function OrbitLoader({
   size?: number;
   className?: string;
 }) {
+  const t = useT();
   return (
     <svg
       width={size}
@@ -24,7 +26,7 @@ export function OrbitLoader({
       viewBox="0 0 48 48"
       fill="none"
       role="status"
-      aria-label="Loading"
+      aria-label={t("common.loadingShort")}
       className={cn("orbit-loader shrink-0", className)}
     >
       <defs>

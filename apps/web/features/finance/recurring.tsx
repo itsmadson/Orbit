@@ -5,7 +5,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { Plus, Repeat, Trash2 } from "lucide-react";
 import { api } from "@/lib/api";
-import { useI18n, useT } from "@/lib/i18n";
+import { useHumanize, useI18n, useT } from "@/lib/i18n";
 import { useItem } from "@/lib/hooks";
 import { useSession } from "@/components/providers";
 import { Section } from "@/components/shared/page";
@@ -39,6 +39,7 @@ type Schedule = {
  */
 export function RecurringPanel() {
   const t = useT();
+  const humanize = useHumanize();
   const { locale } = useI18n();
   const { company, can } = useSession();
   const client = useQueryClient();
@@ -84,7 +85,7 @@ export function RecurringPanel() {
       setOpen(false);
       refresh();
     } catch (error: any) {
-      toast.error(error?.message ?? "Failed");
+      toast.error(error?.message ?? t("common.requestFailed"));
     } finally {
       setBusy(false);
     }
@@ -103,7 +104,7 @@ export function RecurringPanel() {
       );
       refresh();
     } catch (error: any) {
-      toast.error(error?.message ?? "Failed");
+      toast.error(error?.message ?? t("common.requestFailed"));
     } finally {
       setBusy(false);
     }
@@ -179,7 +180,7 @@ export function RecurringPanel() {
                 onValueChange={(cadence) => setForm({ ...form, cadence })}
                 options={["weekly", "monthly", "quarterly", "yearly"].map((value) => ({
                   value,
-                  label: value,
+                  label: humanize(value),
                 }))}
               />
             </Field>

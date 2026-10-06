@@ -1,7 +1,8 @@
 import { Suspense } from "react";
 import { ExperimentsView } from "@/features/rd/rd";
+import { pageTitle } from "@/lib/page-title";
 
-export const metadata = { title: "Experiments" };
+export const generateMetadata = pageTitle("nav.experiments");
 
 export default function ExperimentsPage() {
   return (

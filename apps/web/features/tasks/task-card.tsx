@@ -28,7 +28,7 @@ export const TYPE_COLORS: Record<string, string> = {
 export function TaskCard({ task, dragging }: { task: Task; dragging?: boolean }) {
   const { locale } = useI18n();
   const Icon = TYPE_ICONS[task.type] ?? CheckSquare;
-  const overdue = isOverdue(task.due_date) && task.status !== "done";
+  const overdue = isOverdue(task.due_date) && !task.completed_at;
 
   return (
     <div
