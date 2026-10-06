@@ -21,10 +21,10 @@ from app.models.support import Ticket
 from app.models.work import Project, ProjectMember, Sprint, Task
 from app.schemas.planning import AutoAssignIn, SprintPlanIn
 from app.services import audit, graph, notifications
+from app.services import task_status
 
 router = APIRouter(prefix="/planning", tags=["planning"])
 
-OPEN_STATUSES = ["backlog", "todo", "in_progress", "in_review"]
 #: Hours assumed for a task nobody estimated. Better than treating it as free.
 DEFAULT_ESTIMATE = 4.0
 PRIORITY_WEIGHT = {"urgent": 0, "high": 1, "medium": 2, "low": 3}
@@ -81,13 +81,13 @@ def capacity_rows(db, company_id, start: date, end: date,
                 Task.assignee_id == person.id,
                 Task.company_id == company_id,
                 Task.deleted_at.is_(None),
-                Task.status.in_(OPEN_STATUSES),
+                task_status.is_open(),
             )
         ) or 0
         open_tasks = db.scalar(
             select(func.count(Task.id)).where(
                 Task.assignee_id == person.id, Task.company_id == company_id,
-                Task.deleted_at.is_(None), Task.status.in_(OPEN_STATUSES),
+                Task.deleted_at.is_(None), task_status.is_open(),
             )
         ) or 0
         open_tickets = db.scalar(
@@ -179,7 +179,7 @@ def auto_assign(payload: AutoAssignIn, db: DbSession,
 
     stmt = select(Task).where(
         Task.company_id == user.company_id, Task.deleted_at.is_(None),
-        Task.assignee_id.is_(None), Task.status.in_(["backlog", "todo"]),
+        Task.assignee_id.is_(None), task_status.in_category("open"),
     )
     if payload.project_id:
         stmt = stmt.where(Task.project_id == payload.project_id)
@@ -289,7 +289,7 @@ def plan_sprint(payload: SprintPlanIn, db: DbSession,
         select(Task).where(
             Task.company_id == user.company_id, Task.project_id == project.id,
             Task.deleted_at.is_(None), Task.sprint_id.is_(None),
-            Task.status.in_(["backlog", "todo"]),
+            task_status.in_category("open"),
         )
     ).all()
     candidates.sort(key=lambda t: (

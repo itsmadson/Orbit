@@ -3,7 +3,7 @@
 import * as React from "react";
 import Link from "next/link";
 import { FolderKanban, LayoutGrid, List, Plus } from "lucide-react";
-import { useI18n, useT } from "@/lib/i18n";
+import { useHumanize, useI18n, useT } from "@/lib/i18n";
 import { useCreateParam, useDebounced, useList } from "@/lib/hooks";
 import { useSession } from "@/components/providers";
 import type { ProjectSummary } from "@/lib/types";
@@ -12,9 +12,10 @@ import { Column, DataTable, ErrorState, FilterChips, Pagination, SearchInput, To
 import { Avatar, EmptyState, Progress, Skeleton, StatusBadge } from "@/components/ui/misc";
 import { Button } from "@/components/ui/button";
 import { ProjectDialog } from "@/features/projects/project-form";
-import { cn, formatCurrency, formatDate, humanize } from "@/lib/utils";
+import { cn, formatCurrency, formatDate } from "@/lib/utils";
 
 export function ProjectListView() {
+  const humanize = useHumanize();
   const t = useT();
   const { locale } = useI18n();
   const { can, company } = useSession();
@@ -171,7 +172,7 @@ export function ProjectListView() {
         <EmptyState
           icon={FolderKanban}
           title={t("common.empty")}
-          description="Create your first project to connect tasks, documents, meetings and spend."
+          description={t("projects.emptyHint")}
           action={
             can("projects.write") ? (
               <Button variant="primary" onClick={() => setCreateOpen(true)}>

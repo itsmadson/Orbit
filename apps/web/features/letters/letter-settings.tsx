@@ -113,7 +113,7 @@ function NumberingCard({
       toast.success(t("action.save"));
       onSaved();
     } catch (error: any) {
-      toast.error(error?.message ?? "Failed");
+      toast.error(error?.message ?? t("common.requestFailed"));
     } finally {
       setSaving(false);
     }
@@ -275,7 +275,7 @@ function LetterheadCard({
 
   async function readLogo(file: File, key: "logo_data_url" | "signature_data_url" | "stamp_data_url") {
     if (file.size > 1_500_000) {
-      toast.error("Image must be under 1.5 MB");
+      toast.error(t("letters.imageLimitSmall"));
       return;
     }
     const reader = new FileReader();
@@ -319,7 +319,7 @@ function LetterheadCard({
       toast.success(t("action.save"));
       onSaved();
     } catch (error: any) {
-      toast.error(error?.message ?? "Failed");
+      toast.error(error?.message ?? t("common.requestFailed"));
     } finally {
       setSaving(false);
     }
@@ -358,7 +358,7 @@ function LetterheadCard({
               disabled={!editable}
             />
           </Field>
-          <Field label="Logo" hint="Used when no header banner is set">
+          <Field label={t("letters.logo")} hint={t("letters.logoHint")}>
             <div className="flex items-center gap-3">
               {form.logo_data_url ? (
                 // eslint-disable-next-line @next/next/no-img-element
@@ -379,7 +379,7 @@ function LetterheadCard({
               />
             </div>
           </Field>
-          <Field label="Address">
+          <Field label={t("letters.address")}>
             <Textarea
               value={form.address ?? ""}
               onChange={(e) => set({ address: e.target.value })}
@@ -388,14 +388,14 @@ function LetterheadCard({
             />
           </Field>
           <div className="grid gap-3 sm:grid-cols-2">
-            <Field label="Phone">
+            <Field label={t("common.phone")}>
               <Input
                 value={form.phone ?? ""}
                 onChange={(e) => set({ phone: e.target.value })}
                 disabled={!editable}
               />
             </Field>
-            <Field label="Email">
+            <Field label={t("common.email")}>
               <Input
                 value={form.email ?? ""}
                 onChange={(e) => set({ email: e.target.value })}
@@ -415,12 +415,12 @@ function LetterheadCard({
                 }
                 disabled={!editable}
                 options={[
-                  { value: "fa", label: "فارسی (RTL)" },
-                  { value: "en", label: "English (LTR)" },
+                  { value: "fa", label: t("letters.dirFa") },
+                  { value: "en", label: t("letters.dirEn") },
                 ]}
               />
             </Field>
-            <Field label="Paper">
+            <Field label={t("letters.paper")}>
               <SimpleSelect
                 value={form.paper ?? "A4"}
                 onValueChange={(value) => set({ paper: value })}
@@ -428,13 +428,13 @@ function LetterheadCard({
                 options={[
                   { value: "A4", label: "A4" },
                   { value: "A5", label: "A5" },
-                  { value: "Letter", label: "US Letter" },
+                  { value: "Letter", label: t("letters.paperLetter") },
                 ]}
               />
             </Field>
           </div>
           <div className="grid gap-3 sm:grid-cols-3">
-            <Field label="Top (mm)">
+            <Field label={t("letters.marginTop")}>
               <Input
                 type="number"
                 value={form.margin_top_mm ?? 38}
@@ -442,7 +442,7 @@ function LetterheadCard({
                 disabled={!editable}
               />
             </Field>
-            <Field label="Bottom (mm)">
+            <Field label={t("letters.marginBottom")}>
               <Input
                 type="number"
                 value={form.margin_bottom_mm ?? 28}
@@ -450,7 +450,7 @@ function LetterheadCard({
                 disabled={!editable}
               />
             </Field>
-            <Field label="Sides (mm)">
+            <Field label={t("letters.marginSides")}>
               <Input
                 type="number"
                 value={form.margin_x_mm ?? 22}
@@ -460,7 +460,7 @@ function LetterheadCard({
             </Field>
           </div>
           <div className="grid gap-3 sm:grid-cols-2">
-            <Field label="Signature image">
+            <Field label={t("letters.signatureImage")}>
               <input
                 type="file"
                 accept="image/png,image/jpeg"
@@ -471,7 +471,7 @@ function LetterheadCard({
                 className="text-[12px] text-muted file:me-2 file:rounded-md file:border-0 file:bg-surface-2 file:px-2 file:py-1 file:text-[12px] file:text-text"
               />
             </Field>
-            <Field label="Stamp image">
+            <Field label={t("letters.stampImage")}>
               <input
                 type="file"
                 accept="image/png,image/jpeg"
@@ -484,7 +484,7 @@ function LetterheadCard({
             </Field>
           </div>
           <p className="text-[11px] leading-relaxed text-faint">
-            The signature and stamp are printed only once a letter is signed.
+            {t("letters.signatureHint")}
           </p>
 
           <Separator />
@@ -551,7 +551,7 @@ function BannerField({
 
   function read(file: File) {
     if (file.size > 3_000_000) {
-      toast.error("Image must be under 3 MB");
+      toast.error(t("letters.imageLimitLarge"));
       return;
     }
     const reader = new FileReader();
@@ -651,7 +651,7 @@ function TemplatesCard({
       setDraft({ ...draft, name: "", subject: "", body: "" });
       onChanged();
     } catch (error: any) {
-      toast.error(error?.message ?? "Failed");
+      toast.error(error?.message ?? t("common.requestFailed"));
     }
   }
 

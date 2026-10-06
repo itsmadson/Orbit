@@ -58,13 +58,14 @@ ROLE_PERMISSIONS: dict[str, set[str]] = {
         | _all(["approvals", "letters", "support", "planning"], READ, WRITE)
         | _all(["hr", "finance", "analytics", "crm", "audit", "monitoring"], READ)
         | {"projects.manage", "tasks.manage", "goals.manage", "letters.manage",
-           "support.manage", "planning.manage"}
+           "support.manage", "planning.manage", "integrations.read", "integrations.write"}
     ),
     "project_manager": (
         _COMMON_READ
         | _all(["projects", "tasks", "documents", "decisions", "meetings", "goals",
                 "ideas", "brainstorm", "workflows"], WRITE)
-        | {"projects.manage", "tasks.manage", "analytics.read", "approvals.read", "crm.read"}
+        | {"projects.manage", "tasks.manage", "analytics.read", "approvals.read", "crm.read",
+           "integrations.read", "integrations.write"}
     ),
     "finance": (
         _COMMON_READ

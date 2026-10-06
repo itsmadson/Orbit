@@ -7,7 +7,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { FlaskConical, FolderKanban, ThumbsUp } from "lucide-react";
 import { toast } from "sonner";
 import { api } from "@/lib/api";
-import { useI18n, useT } from "@/lib/i18n";
+import { useHumanize, useI18n, useT } from "@/lib/i18n";
 import { useItem } from "@/lib/hooks";
 import { useSession } from "@/components/providers";
 import type { Idea } from "@/lib/types";
@@ -17,7 +17,7 @@ import { Avatar, Badge, Progress, StatusBadge } from "@/components/ui/misc";
 import { Button } from "@/components/ui/button";
 import { SimpleSelect } from "@/components/ui/select";
 import { ReadOnlyHtml } from "@/components/shared/editor";
-import { cn, formatCurrency, formatDate, humanize } from "@/lib/utils";
+import { cn, formatCurrency, formatDate } from "@/lib/utils";
 
 const STATUSES = [
   "draft", "submitted", "discussion", "evaluation", "approved", "prototype", "rd", "product",
@@ -25,6 +25,7 @@ const STATUSES = [
 ];
 
 export function IdeaDetail({ ideaId }: { ideaId: string }) {
+  const humanize = useHumanize();
   const t = useT();
   const { locale } = useI18n();
   const router = useRouter();
@@ -42,7 +43,7 @@ export function IdeaDetail({ ideaId }: { ideaId: string }) {
   const convert = async (target: "project" | "research") => {
     try {
       const result = await api.post<{ url: string }>(`/ideas/${ideaId}/convert`, { target });
-      toast.success(target === "project" ? "Project created" : "R&D project created");
+      toast.success(t(target === "project" ? "ideas.projectCreated" : "ideas.rdCreated"));
       refresh();
       router.push(result.url);
     } catch (error: any) {
@@ -131,7 +132,7 @@ export function IdeaDetail({ ideaId }: { ideaId: string }) {
               <span className="text-[28px] font-semibold leading-none text-accent">
                 {Number(idea.score).toFixed(1)}
               </span>
-              <span className="text-[11px] text-faint">weighted score</span>
+              <span className="text-[11px] text-faint">{t("ideas.weightedScore")}</span>
             </div>
             <ul className="space-y-2">
               {scores.map((score) => (
@@ -163,7 +164,7 @@ export function IdeaDetail({ ideaId }: { ideaId: string }) {
                     : "—"}
                 </span>
               </DetailRow>
-              <DetailRow label="Contributors">
+              <DetailRow label={t("ideas.contributors")}>
                 <span className="flex flex-wrap justify-end gap-1">
                   {idea.contributors?.length
                     ? idea.contributors.map((person) => (

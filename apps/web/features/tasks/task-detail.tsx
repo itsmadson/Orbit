@@ -6,7 +6,9 @@ import { useRouter } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
 import { CheckSquare, Link2, Trash2 } from "lucide-react";
 import { api } from "@/lib/api";
-import { useI18n, useT } from "@/lib/i18n";
+import { useHumanize, useI18n, useT } from "@/lib/i18n";
+import { useStatusLabels } from "@/lib/statuses";
+import { ExternalIssues } from "@/features/tasks/external-issues";
 import { useItem, useRemove } from "@/lib/hooks";
 import { useSession } from "@/components/providers";
 import type { Task } from "@/lib/types";
@@ -20,13 +22,15 @@ import { SimpleSelect } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { UserPicker } from "@/components/shared/pickers";
 import { RichEditor, ReadOnlyHtml } from "@/components/shared/editor";
-import { PRIORITIES, TASK_STATUSES, TASK_TYPES } from "@/features/tasks/task-form";
+import { PRIORITIES, TASK_TYPES } from "@/features/tasks/task-form";
 import { TYPE_COLORS, TYPE_ICONS } from "@/features/tasks/task-card";
 import { cn, formatDate, isOverdue } from "@/lib/utils";
 import { toast } from "sonner";
 
 export function TaskDetail({ taskId }: { taskId: string }) {
   const t = useT();
+  const humanize = useHumanize();
+  const statusLabels = useStatusLabels();
   const { locale } = useI18n();
   const router = useRouter();
   const client = useQueryClient();
@@ -46,14 +50,14 @@ export function TaskDetail({ taskId }: { taskId: string }) {
       client.invalidateQueries({ queryKey: ["/tasks/board"] });
       client.invalidateQueries({ queryKey: ["dashboard"] });
     } catch (error: any) {
-      toast.error(error.message);
+      toast.error(error.message ?? t("common.requestFailed"));
     }
   };
 
   const confirm = useConfirm();
   const remove = useRemove((id) => `/tasks/${id}`, {
     invalidate: ["/tasks", "/tasks/board"],
-    success: "Task deleted",
+    success: t("tasks.deleted"),
     onDone: () => router.push("/tasks"),
   });
 
@@ -188,7 +192,7 @@ export function TaskDetail({ taskId }: { taskId: string }) {
                     value={task.status}
                     onValueChange={(status) => patch({ status } as any)}
                     className="h-7 w-36"
-                    options={TASK_STATUSES.map((value) => ({ value, label: value.replace("_", " ") }))}
+                    options={statusLabels.options(true)}
                   />
                 ) : (
                   <StatusBadge status={task.status} />
@@ -200,10 +204,10 @@ export function TaskDetail({ taskId }: { taskId: string }) {
                     value={task.priority}
                     onValueChange={(priority) => patch({ priority } as any)}
                     className="h-7 w-36"
-                    options={PRIORITIES.map((value) => ({ value, label: value }))}
+                    options={PRIORITIES.map((value) => ({ value, label: humanize(value) }))}
                   />
                 ) : (
-                  <span>{task.priority}</span>
+                  <span>{humanize(task.priority)}</span>
                 )}
               </DetailRow>
               <DetailRow label={t("common.type")}>
@@ -212,10 +216,10 @@ export function TaskDetail({ taskId }: { taskId: string }) {
                     value={task.type}
                     onValueChange={(type) => patch({ type } as any)}
                     className="h-7 w-36"
-                    options={TASK_TYPES.map((value) => ({ value, label: value }))}
+                    options={TASK_TYPES.map((value) => ({ value, label: humanize(value) }))}
                   />
                 ) : (
-                  <span>{task.type}</span>
+                  <span>{humanize(task.type)}</span>
                 )}
               </DetailRow>
               <DetailRow label={t("common.assignee")}>
@@ -244,7 +248,7 @@ export function TaskDetail({ taskId }: { taskId: string }) {
                     onChange={(event) => patch({ due_date: event.target.value || null } as any)}
                   />
                 ) : (
-                  <span className={cn(isOverdue(task.due_date) && "text-danger")}>
+                  <span className={cn(isOverdue(task.due_date) && !task.completed_at && "text-danger")}>
                     {formatDate(task.due_date, locale)}
                   </span>
                 )}
@@ -277,6 +281,12 @@ export function TaskDetail({ taskId }: { taskId: string }) {
               </DetailRow>
             </div>
           </Section>
+
+          {task.external?.length || (task.project_id && can("integrations.write")) ? (
+            <Section title={t("integrations.linkedIssues")} contentClassName="p-2 empty:hidden">
+              <ExternalIssues task={task} />
+            </Section>
+          ) : null}
 
           <Section
             title={

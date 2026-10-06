@@ -82,7 +82,7 @@ export function PlanningView() {
         setter(result);
       }
     } catch (error: any) {
-      toast.error(error?.message ?? "Failed");
+      toast.error(error?.message ?? t("common.requestFailed"));
     } finally {
       setBusy(false);
     }

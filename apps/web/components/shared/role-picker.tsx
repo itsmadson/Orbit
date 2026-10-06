@@ -2,9 +2,9 @@
 
 import * as React from "react";
 import { Check, ShieldAlert } from "lucide-react";
-import { useT } from "@/lib/i18n";
+import { useHumanize, useT } from "@/lib/i18n";
 import { useItem } from "@/lib/hooks";
-import { cn, humanize } from "@/lib/utils";
+import { cn } from "@/lib/utils";
 
 export type RoleInfo = {
   key: string;
@@ -90,6 +90,7 @@ export function RolePicker({
 }
 
 export function RoleSummary({ role }: { role?: RoleInfo }) {
+  const humanize = useHumanize();
   const t = useT();
   if (!role) return null;
   return (
@@ -99,7 +100,7 @@ export function RoleSummary({ role }: { role?: RoleInfo }) {
           {t("people.roleGrants")}
         </span>
         <span className="text-[11px] text-faint tnum">
-          {role.permission_count} permissions · {role.can_write_count} areas writable
+          {t("settings.roleSummary", { permissions: role.permission_count, areas: role.can_write_count })}
         </span>
       </div>
 

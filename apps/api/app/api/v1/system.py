@@ -15,11 +15,11 @@ from app.core.errors import BadRequest, Forbidden, NotFound
 from app.core.pagination import Paging, as_page
 from app.core.rbac import has_permission
 from app.models.identity import User
-from app.models.system import Attachment, AuditLog, Comment, Integration, Notification
+from app.models.system import Attachment, AuditLog, Comment, Notification
 from app.schemas.common import (
     ActivityOut, AttachmentOut, CommentIn, CommentOut, Message, RelationIn, RelationOut,
 )
-from app.schemas.system import InboxCounts, IntegrationOut, NotificationOut, SearchResults
+from app.schemas.system import InboxCounts, NotificationOut, SearchResults
 from app.services import audit, graph, notifications as notification_service, search as search_service
 from app.services.registry import REGISTRY, spec
 from app.services.storage import build_key, get_storage
@@ -198,6 +198,9 @@ def create_comment(entity_type: str, entity_id: uuid.UUID, payload: CommentIn,
     )
     db.add(comment)
     db.flush()
+    if entity_type == "task":
+        from app.services.integrations import sync as integration_sync
+        integration_sync.push_comment(db, obj, user, payload.body)
     title = entity_spec.title_of(obj)
     for mention in payload.mentions:
         notification_service.notify(
@@ -396,39 +399,3 @@ def audit_log(db: DbSession, user: Annotated[User, Depends(require("audit.read")
     return as_page(items, total, paging)
 
 
-# ---------------------------------------------------------------- integrations
-CATALOGUE = [
-    ("github", "GitHub", "Link commits and pull requests to tasks.", "development"),
-    ("gitlab", "GitLab", "Link merge requests and pipelines to tasks.", "development"),
-    ("slack", "Slack", "Send notifications to Slack channels.", "communication"),
-    ("teams", "Microsoft Teams", "Send notifications to Teams channels.", "communication"),
-    ("google_calendar", "Google Calendar", "Two-way sync for meetings.", "calendar"),
-    ("google_drive", "Google Drive", "Attach Drive files to entities.", "storage"),
-    ("s3", "S3 / MinIO", "Object storage for attachments.", "storage"),
-    ("email", "Email (SMTP)", "Deliver notifications by email.", "communication"),
-    ("jira", "Jira", "Import issues and sync status.", "development"),
-    ("linear", "Linear", "Import issues and sync status.", "development"),
-    ("ldap", "LDAP", "Directory-backed authentication.", "identity"),
-    ("oidc", "OIDC / SSO", "Single sign-on for the workspace.", "identity"),
-]
-
-
-@router.get("/integrations", response_model=list[IntegrationOut])
-def list_integrations(db: DbSession, user: Annotated[User, Depends(require("integrations.read"))]):
-    configured = {
-        i.provider: i for i in db.scalars(
-            select(Integration).where(Integration.company_id == user.company_id)
-        ).all()
-    }
-    out = []
-    for provider, name, description, category in CATALOGUE:
-        row = configured.get(provider)
-        out.append(
-            {
-                "id": row.id if row else None, "provider": provider,
-                "status": row.status if row else "available",
-                "connected_at": row.connected_at if row else None,
-                "name": name, "description": description, "category": category,
-            }
-        )
-    return out

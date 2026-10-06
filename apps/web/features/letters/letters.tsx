@@ -244,7 +244,7 @@ function ComposeDialog({
       setForm({ ...form, text: "", subject: "", recipient_name: "", recipient_org: "" });
       router.push(`/letters/${letter.id}`);
     } catch (error: any) {
-      toast.error(error?.message ?? "Failed");
+      toast.error(error?.message ?? t("common.requestFailed"));
     } finally {
       setSaving(false);
     }

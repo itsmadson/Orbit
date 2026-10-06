@@ -6,7 +6,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { ChevronDown, Plus, Target } from "lucide-react";
 import { toast } from "sonner";
 import { api } from "@/lib/api";
-import { useI18n, useT } from "@/lib/i18n";
+import { useHumanize, useI18n, useT } from "@/lib/i18n";
 import { useCreate, useCreateParam, useItem } from "@/lib/hooks";
 import { useSession } from "@/components/providers";
 import type { Goal } from "@/lib/types";
@@ -32,7 +32,7 @@ export function GoalsView() {
     <div>
       <PageHeader
         title={t("goals.title")}
-        subtitle="Objectives and key results, cascaded from company to individual"
+        subtitle={t("goals.subtitle")}
         actions={
           can("goals.write") ? (
             <Button variant="primary" onClick={() => setCreateOpen(true)}>
@@ -61,6 +61,7 @@ export function GoalsView() {
 }
 
 function GoalNode({ goal, depth = 0 }: { goal: Goal & { children?: Goal[] }; depth?: number }) {
+  const humanize = useHumanize();
   const t = useT();
   const { locale } = useI18n();
   const client = useQueryClient();
@@ -180,6 +181,7 @@ function GoalDialog({
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }) {
+  const humanize = useHumanize();
   const t = useT();
   const projects = useProjects();
   const goals = useItem<Goal[]>("/goals", { root_only: false });
@@ -201,7 +203,7 @@ function GoalDialog({
 
   const create = useCreate<Goal>("/goals", {
     invalidate: ["/goals", "/goals/tree", "dashboard"],
-    success: "Goal created",
+    success: t("goals.created"),
     onDone: () => onOpenChange(false),
   });
 
@@ -245,7 +247,7 @@ function GoalDialog({
                 options={LEVELS.map((value) => ({ value, label: humanize(value) }))}
               />
             </Field>
-            <Field label="Parent goal">
+            <Field label={t("goals.parent")}>
               <SimpleSelect
                 value={form.parent_id}
                 onValueChange={(parent_id) => setForm({ ...form, parent_id })}
@@ -292,7 +294,7 @@ function GoalDialog({
                 <div key={index} className="flex gap-2">
                   <Input
                     className="flex-1"
-                    placeholder="Key result"
+                    placeholder={t("goals.keyResult")}
                     value={kr.title}
                     onChange={(event) => {
                       const next = [...keyResults];

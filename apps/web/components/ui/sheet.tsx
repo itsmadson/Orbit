@@ -3,6 +3,7 @@
 import * as React from "react";
 import * as DialogPrimitive from "@radix-ui/react-dialog";
 import { X } from "lucide-react";
+import { useT } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 
 export const Sheet = DialogPrimitive.Root;
@@ -48,9 +49,10 @@ export function SheetTitle({ children }: { children: React.ReactNode }) {
 }
 
 export function SheetDescription({ children }: { children?: React.ReactNode }) {
+  const t = useT();
   return (
     <DialogPrimitive.Description className={children ? "text-xs text-muted" : "sr-only"}>
-      {children ?? "Details"}
+      {children ?? t("common.details")}
     </DialogPrimitive.Description>
   );
 }

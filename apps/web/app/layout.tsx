@@ -4,22 +4,26 @@ import "./globals.css";
 import { Providers } from "@/components/providers";
 import { getSession } from "@/lib/server";
 import type { Locale } from "@/lib/i18n";
+import { serverT } from "@/lib/page-title";
 
-export const metadata: Metadata = {
-  title: {
-    default: `${process.env.NEXT_PUBLIC_APP_NAME ?? "ORBIT"} — The operating system for your company`,
-    template: `%s · ${process.env.NEXT_PUBLIC_APP_NAME ?? "ORBIT"}`,
-  },
-  description: "ORBIT connects projects, people, knowledge, operations and money in one workspace.",
-  icons: {
-    icon: [
-      { url: "/favicon.svg", type: "image/svg+xml" },
-      { url: "/icon-32.png", sizes: "32x32", type: "image/png" },
-    ],
-    apple: [{ url: "/apple-touch-icon.png", sizes: "180x180" }],
-  },
-  manifest: "/manifest.webmanifest",
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const t = await serverT();
+  return {
+    title: {
+      default: `${process.env.NEXT_PUBLIC_APP_NAME ?? "ORBIT"} — ${t("app.titleDefault")}`,
+      template: `%s · ${process.env.NEXT_PUBLIC_APP_NAME ?? "ORBIT"}`,
+    },
+    description: t("app.description"),
+    icons: {
+      icon: [
+        { url: "/favicon.svg", type: "image/svg+xml" },
+        { url: "/icon-32.png", sizes: "32x32", type: "image/png" },
+      ],
+      apple: [{ url: "/apple-touch-icon.png", sizes: "180x180" }],
+    },
+    manifest: "/manifest.webmanifest",
+  };
+}
 
 export const viewport: Viewport = {
   themeColor: [

@@ -9,7 +9,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { api } from "@/lib/api";
-import { useI18n, useT } from "@/lib/i18n";
+import { useHumanize, useI18n, useT } from "@/lib/i18n";
 import { useCreateParam, useItem, useList } from "@/lib/hooks";
 import { useSession } from "@/components/providers";
 import type { Request, WorkflowDefinition } from "@/lib/types";
@@ -21,7 +21,7 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogFooter, DialogHeader } from "@/components/ui/dialog";
 import { Field, Input, Textarea } from "@/components/ui/input";
 import { SimpleSelect } from "@/components/ui/select";
-import { cn, formatCurrency, formatDate, humanize, relativeTime } from "@/lib/utils";
+import { cn, formatCurrency, formatDate, relativeTime } from "@/lib/utils";
 
 export function OfficeView() {
   const t = useT();
@@ -141,7 +141,7 @@ function RequestList({ data, loading }: { data?: Request[]; loading?: boolean })
               </p>
             </div>
             {request.awaiting_me ? (
-              <Badge className="border-warning/30 bg-warning/10 text-warning">action needed</Badge>
+              <Badge className="border-warning/30 bg-warning/10 text-warning">{t("office.actionNeeded")}</Badge>
             ) : null}
             <StatusBadge status={request.status === "open" ? request.state : request.status} />
           </Link>
@@ -186,7 +186,7 @@ export function RequestDialog({
         title: `${active.name}: ${Object.values(data)[0] ?? ""}`,
         data,
       });
-      toast.success("Request submitted");
+      toast.success(t("office.submitted"));
       client.invalidateQueries({ queryKey: ["/requests"] });
       client.invalidateQueries({ queryKey: ["dashboard"] });
       onOpenChange(false);
@@ -287,6 +287,7 @@ export function RequestDialog({
 }
 
 export function ApprovalsView() {
+  const humanize = useHumanize();
   const t = useT();
   const { locale } = useI18n();
   const [status, setStatus] = React.useState<string | undefined>();
@@ -312,7 +313,7 @@ export function ApprovalsView() {
     },
     {
       key: "requester",
-      header: "Requester",
+      header: t("office.requester"),
       cell: (row) =>
         row.requester ? (
           <span className="flex items-center gap-1.5 text-[12px]">
@@ -325,7 +326,7 @@ export function ApprovalsView() {
     },
     {
       key: "state",
-      header: "Step",
+      header: t("office.step"),
       cell: (row) => <Badge>{row.state_label ?? humanize(row.state)}</Badge>,
     },
     { key: "status", header: t("common.status"), cell: (row) => <StatusBadge status={row.status} /> },
@@ -349,7 +350,7 @@ export function ApprovalsView() {
 
   return (
     <div>
-      <PageHeader title={t("nav.approvals")} subtitle="Requests moving through the company" />
+      <PageHeader title={t("nav.approvals")} subtitle={t("office.approvalsSubtitle")} />
 
       <Tabs defaultValue="awaiting">
         <TabsList className="mb-4">
@@ -366,7 +367,7 @@ export function ApprovalsView() {
               rows={awaiting.data?.items ?? []}
               loading={awaiting.isLoading}
               rowHref={(row) => `/approvals/${row.id}`}
-              empty={<EmptyState icon={Check} title="Nothing waiting on you" />}
+              empty={<EmptyState icon={Check} title={t("office.nothingWaiting")} />}
             />
           </div>
         </TabsContent>
@@ -398,6 +399,7 @@ export function ApprovalsView() {
 }
 
 export function RequestDetail({ requestId }: { requestId: string }) {
+  const humanize = useHumanize();
   const t = useT();
   const { locale } = useI18n();
   const client = useQueryClient();
@@ -455,7 +457,7 @@ export function RequestDetail({ requestId }: { requestId: string }) {
 
       <div className="grid gap-4 lg:grid-cols-[1fr_320px]">
         <div className="space-y-4">
-          <Section title="Request" contentClassName="p-3">
+          <Section title={t("office.request")} contentClassName="p-3">
             <div className="divide-y divide-border/60">
               {(request.form_schema ?? []).map((field) => (
                 <DetailRow key={field.key} label={field.label}>
@@ -514,11 +516,11 @@ export function RequestDetail({ requestId }: { requestId: string }) {
           </Section>
 
           {request.can_act && request.available_actions?.length ? (
-            <Section title="Decision" contentClassName="p-3">
+            <Section title={t("office.decision")} contentClassName="p-3">
               <Textarea
                 value={comment}
                 onChange={(event) => setComment(event.target.value)}
-                placeholder="Optional comment"
+                placeholder={t("office.optionalComment")}
                 className="mb-2"
               />
               <div className="flex flex-wrap gap-2">
@@ -552,8 +554,8 @@ export function RequestDetail({ requestId }: { requestId: string }) {
               <DetailRow label={t("common.status")}>
                 <StatusBadge status={request.status} />
               </DetailRow>
-              <DetailRow label="Current step">{request.state_label ?? request.state}</DetailRow>
-              <DetailRow label="Requester">{request.requester?.full_name ?? "—"}</DetailRow>
+              <DetailRow label={t("office.currentStep")}>{request.state_label ?? request.state}</DetailRow>
+              <DetailRow label={t("office.requester")}>{request.requester?.full_name ?? "—"}</DetailRow>
               <DetailRow label={t("common.amount")}>
                 {request.amount ? formatCurrency(request.amount, "USD", locale) : "—"}
               </DetailRow>
@@ -585,7 +587,7 @@ export function WorkflowsView() {
     <div>
       <PageHeader
         title={t("nav.workflows")}
-        subtitle="Workflows are data: states, transitions and forms — new ones need no code"
+        subtitle={t("office.workflowsSubtitle")}
       />
       <div className="space-y-3">
         {(definitions.data ?? []).map((definition) => (

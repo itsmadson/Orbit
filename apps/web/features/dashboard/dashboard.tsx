@@ -138,7 +138,7 @@ export function DashboardView() {
               tone={m.projects_at_risk ? "warning" : "positive"} />
             <Stat label={t("dashboard.overdueTasks")} value={formatNumber(m.overdue_tasks, locale)}
               hint={`${m.task_completion_rate}% of all tasks done`} />
-            <Stat label={t("dashboard.newIdeas")} value={formatNumber(m.new_ideas, locale)} hint="last 30 days" />
+            <Stat label={t("dashboard.newIdeas")} value={formatNumber(m.new_ideas, locale)} hint={t("common.last30Days")} />
             <Stat label={t("dashboard.runningExperiments")} value={formatNumber(m.running_experiments, locale)}
               hint={`${m.active_research} active studies`} />
           </div>
@@ -426,10 +426,11 @@ function Stat({
 }
 
 function Delta({ value, invert }: { value: number; invert?: boolean }) {
+  const t = useT();
   return (
     <>
       <DeltaPill value={value} invert={invert} />
-      <span className="text-faint">vs last month</span>
+      <span className="text-faint">{t("common.vsLastMonth")}</span>
     </>
   );
 }

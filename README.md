@@ -106,8 +106,18 @@ from the key results.
 
 ### Orbit AI
 
-Answers from your actual records, filtered by what you are allowed to see — and
-says plainly when no language model is connected instead of inventing one.
+With a model connected, Orbit AI is an agent: it answers from your records and
+it *acts* — creates the task, moves the work, updates the GitHub issue. It has no
+private path into the database. Every read and write is an ordinary API request
+carrying the asking user's own token, so it can do what that user can do and
+nothing more. Deletes, bulk changes, user and permission changes, and anything
+written to an external tracker are parked in the chat until the user approves
+them.
+
+The tool-calling loop is [Tau](https://twotimespi.dev), Hugging Face's open
+agent harness; the model is any OpenAI-compatible API, [GapGPT](https://gapgpt.app)
+by default. Without a model it still answers from retrieved records and says so
+plainly instead of inventing one.
 
 <img src="docs/media/ai.png" alt="Orbit AI" width="100%" />
 
@@ -117,7 +127,8 @@ says plainly when no language model is connected instead of inventing one.
 
 | | |
 |---|---|
-| **Work** | Projects, tasks, sprints, milestones, dependencies, roadmaps |
+| **Work** | Projects, tasks on a board whose columns you define, sprints, milestones, dependencies, roadmaps |
+| **Integrations** | GitHub, GitLab and Jira: import issues as tasks, two-way sync of status, title, description and comments |
 | **Innovation** | Idea pipeline with scoring and voting, brainstorm boards, R&D projects, experiments |
 | **Knowledge** | Wiki spaces, versioned documents, decision records, meetings with action items |
 | **Operations** | Data-driven approval workflows, the دبیرخانه letter register with PDF/DOCX export |
@@ -215,6 +226,14 @@ Everything lives in `.env` (copied from `.env.example`).
 | `DEMO_PASSWORD` | `orbit1234` | Password given to every seeded user. |
 | `AI_PROVIDER` | `deterministic` | `deterministic`, `openai` or `ollama`. |
 | `AI_BASE_URL` / `AI_API_KEY` / `AI_MODEL` | empty | AI provider connection. |
+| `GAPGPT_API_KEY` / `ASSISTANT_API_KEY` | empty | Key for the assistant's model API. Setting one turns Orbit AI into an agent. |
+| `ASSISTANT_API_BASE` | `https://api.gapgpt.app/v1` | Any OpenAI-compatible chat endpoint. |
+| `ASSISTANT_MODEL` | `glm-4-flash` | Model name. Stronger models follow multi-step instructions more reliably. |
+| `ASSISTANT_TOOL_MODE` | `auto` | `native` function calling, `prompt` (tools described in the prompt), or `auto`. |
+| `ASSISTANT_MAX_STEPS` / `ASSISTANT_TIMEOUT` | `6` / `120` | Model turns per message; seconds per model call. |
+| `ASSISTANT_DAILY_LIMIT` / `ASSISTANT_MAX_INPUT` | `100` / `4000` | Messages per user per day; characters per message. |
+| `INTEGRATION_SYNC_ENABLED` / `INTEGRATION_SYNC_SECONDS` | `true` / `300` | Background sync with GitHub, GitLab and Jira. |
+| `HTTPS_PROXY` | empty | Outbound proxy for the model API and the trackers, if the host needs one. |
 | `STORAGE_BACKEND` | `local` | `local` (volume) or `s3` (MinIO/AWS). |
 | `S3_ENDPOINT` / `S3_BUCKET` / `S3_ACCESS_KEY` / `S3_SECRET_KEY` | empty | S3-compatible storage. |
 | `NEXT_PUBLIC_APP_NAME` | `ORBIT` | Product name in the UI. |
@@ -482,6 +501,46 @@ Consistent errors:
 | `C` | Quick create |
 | `G` then `P` / `T` / `I` / `D` / `R` / `F` / `C` / `M` / `A` / `E` / `G` | Go to Projects / Tasks / Inbox / Ideas / R&D / Finance / CRM / Meetings / Approvals / Employees / Goals |
 
+### Custom task states
+
+Board columns are rows in `task_statuses`, not a constant. Each has a name (and
+an optional Persian name), a colour and a **category** — open, started, done or
+cancelled. Reports only ever read the category, so a company can add "QA" or
+"Waiting on customer" and velocity, overdue counts and project progress stay
+correct. Add, rename, recolour, reorder and delete columns from the board's
+column menu (needs `tasks.manage`); deleting a column asks where its tasks go.
+
+### GitHub, GitLab and Jira
+
+Connect in **Settings → Integrations** with a token (GitHub or GitLab personal
+access token; Jira site URL + email + API token, or a Data Center PAT). Tokens
+are verified against the tracker, then stored encrypted with a key derived from
+`SECRET_KEY` — rotating that key means reconnecting. They are never sent to the
+browser.
+
+Link an Orbit project to a repository or Jira project and its issues are
+imported as tasks. From then on:
+
+- editing a task's title, description or status pushes to the remote issue;
+- comments on a linked task are mirrored to it;
+- remote changes are pulled every `INTEGRATION_SYNC_SECONDS`, or on **Sync now**;
+- when both sides changed, each keeps the field it changed;
+- status maps by category, and by name where a column is called the same as the
+  remote status (Jira moves through its own workflow transitions);
+- a task born in Orbit can be published to the tracker from its detail page.
+
+Assignees are matched on import by email or name; they are not pushed back.
+There are no webhooks yet — sync is by polling.
+
+### Persian
+
+Every string the web app shows comes from `apps/web/messages/{en,fa}.json`,
+including enum values such as statuses, roles and document types. Text the
+server writes itself — error messages, notifications, dashboard insights — is
+translated in `app/core/i18n.py`, in the reader's language for a request and in
+the recipient's language for a notification. `./scripts/check-i18n.sh` fails if
+a key is missing from either language or still reads the same in both.
+
 ---
 
 ## Verifying a fresh install
@@ -491,6 +550,9 @@ docker compose down -v
 docker compose up -d --build
 docker compose ps            # three healthy services
 ./scripts/smoke-test.sh      # auth, reads, writes and an RBAC denial
+./scripts/test-statuses.sh   # custom task states, Persian server text, assistant guard rails
+./scripts/test-integrations.sh   # tracker sync against an in-memory tracker (no account needed)
+./scripts/check-i18n.sh      # every translation key exists in both languages
 ```
 
 Then sign in at http://localhost:3000 as `admin@orbit.dev` / `orbit1234` and

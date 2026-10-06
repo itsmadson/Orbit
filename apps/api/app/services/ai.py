@@ -29,6 +29,7 @@ from app.models.identity import User
 from app.models.work import Project, Task
 from app.services import search as search_service
 from app.services.registry import REGISTRY
+from app.services import task_status
 
 
 @dataclass
@@ -205,7 +206,7 @@ def _company_summary(db: Session, user: User) -> str:
         select(func.count(Task.id)).where(
             Task.company_id == user.company_id,
             Task.due_date < date.today(),
-            Task.status.notin_(["done", "cancelled"]),
+            task_status.is_open(),
             Task.deleted_at.is_(None),
         )
     ) or 0

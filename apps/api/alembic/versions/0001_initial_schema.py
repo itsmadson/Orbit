@@ -20,6 +20,37 @@ branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 
 
+#: Tables and columns that later revisions create. ``Base.metadata`` describes
+#: the schema as it is *today*; creating all of it here would leave every later
+#: migration colliding with tables that already exist on a fresh database.
+LATER_TABLES = {
+    # 0002
+    "letter_numberings", "letterheads", "letter_sequences", "letter_templates", "letters",
+    # 0004
+    "leave_adjustments", "leave_policies", "saved_views", "project_checkins",
+    "recurring_transactions",
+    # 0005
+    "monitors", "monitor_checks", "tickets", "monitor_incidents", "ticket_messages",
+    # 0006
+    "task_statuses", "integration_links", "external_issues",
+}
+LATER_COLUMNS = {
+    "crm_deals": {"next_step", "next_step_due", "last_activity_at"},   # 0004
+    "users": {"crm_company_id", "weekly_capacity_hours"},              # 0005
+}
+
+
+def _create_initial_schema(bind) -> None:
+    """Create the schema as it stood at this revision, from the current models."""
+    tables = [t for t in Base.metadata.tables.values() if t.name not in LATER_TABLES]
+    Base.metadata.create_all(bind=bind, tables=tables)
+    # Columns a later revision adds: drop them again (with their indexes and
+    # foreign keys) so that revision finds the table the way it expects.
+    for table, columns in LATER_COLUMNS.items():
+        for column in sorted(columns):
+            op.execute(f'ALTER TABLE {table} DROP COLUMN IF EXISTS {column} CASCADE')
+
+
 def upgrade() -> None:
     bind = op.get_bind()
     op.execute('CREATE EXTENSION IF NOT EXISTS "uuid-ossp"')
@@ -33,7 +64,7 @@ def upgrade() -> None:
     ).scalar()
     if has_vector:
         op.execute("CREATE EXTENSION IF NOT EXISTS vector")
-    Base.metadata.create_all(bind=bind)
+    _create_initial_schema(bind)
 
     # Full-text search helpers used by the global search service.
     op.execute(

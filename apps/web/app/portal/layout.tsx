@@ -1,8 +1,9 @@
 import { redirect } from "next/navigation";
 import { PortalShell } from "@/features/portal/portal";
 import { getSession } from "@/lib/server";
+import { pageTitle } from "@/lib/page-title";
 
-export const metadata = { title: "Portal" };
+export const generateMetadata = pageTitle("portal.tabTitle");
 
 export default async function PortalLayout({ children }: { children: React.ReactNode }) {
   const session = await getSession();

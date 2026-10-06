@@ -31,6 +31,26 @@ class Settings(BaseSettings):
     AI_API_KEY: str = ""
     AI_MODEL: str = ""
 
+    # AI assistant: any OpenAI-compatible chat API (GapGPT by default). When a key
+    # is present the assistant is an agent that can read and change the workspace;
+    # without one, Orbit AI falls back to the AI_PROVIDER above.
+    ASSISTANT_API_BASE: str = "https://api.gapgpt.app/v1"
+    ASSISTANT_API_KEY: str = ""
+    GAPGPT_API_KEY: str = ""
+    ASSISTANT_MODEL: str = "glm-4-flash"
+    ASSISTANT_TOOL_MODE: str = "auto"  # auto | native | prompt
+    ASSISTANT_TEMPERATURE: float = 0.3
+    ASSISTANT_TIMEOUT: int = 120
+    ASSISTANT_MAX_STEPS: int = 6
+    ASSISTANT_DAILY_LIMIT: int = 100
+    ASSISTANT_MAX_INPUT: int = 4000
+
+    # Issue-tracker integrations (GitHub, GitLab, Jira)
+    INTEGRATION_SYNC_ENABLED: bool = True
+    INTEGRATION_SYNC_SECONDS: int = 300
+    INTEGRATION_TIMEOUT: int = 25
+    INTEGRATION_IMPORT_LIMIT: int = 300
+
     # Storage abstraction
     STORAGE_BACKEND: str = "local"  # local | s3
     STORAGE_LOCAL_PATH: str = "/data/files"
@@ -54,6 +74,19 @@ class Settings(BaseSettings):
             f"postgresql+psycopg://{self.POSTGRES_USER}:{self.POSTGRES_PASSWORD}"
             f"@{self.POSTGRES_HOST}:{self.POSTGRES_PORT}/{self.POSTGRES_DB}"
         )
+
+    @property
+    def assistant_api_key(self) -> str:
+        return self.ASSISTANT_API_KEY or self.GAPGPT_API_KEY
+
+    @property
+    def assistant_api_base(self) -> str:
+        return self.ASSISTANT_API_BASE.rstrip("/")
+
+    @property
+    def assistant_tool_mode(self) -> str:
+        mode = self.ASSISTANT_TOOL_MODE.strip().lower()
+        return mode if mode in ("auto", "native", "prompt") else "auto"
 
     @property
     def cors_origins(self) -> list[str]:

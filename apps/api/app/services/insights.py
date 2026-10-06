@@ -11,6 +11,7 @@ from datetime import UTC, date, datetime, timedelta
 from sqlalchemy import and_, func, select
 from sqlalchemy.orm import Session
 
+from app.core.i18n import localize
 from app.models.business import Deal, Invoice, Transaction
 from app.models.identity import User
 from app.models.innovation import Experiment, Idea, ResearchProject
@@ -18,6 +19,7 @@ from app.models.knowledge import Decision
 from app.models.ops import Approval, Meeting, WorkflowRequest
 from app.models.people import Goal, LeaveRequest
 from app.models.work import Milestone, Project, Task
+from app.services import task_status
 
 
 def _month_bounds(today: date) -> tuple[date, date]:
@@ -54,7 +56,7 @@ def company_metrics(db: Session, company_id: uuid.UUID, user: User) -> dict:
     open_tasks = db.scalar(
         select(func.count(Task.id)).where(
             Task.company_id == company_id,
-            Task.status.notin_(["done", "cancelled"]),
+            task_status.is_open(),
             Task.deleted_at.is_(None),
         )
     ) or 0
@@ -62,7 +64,7 @@ def company_metrics(db: Session, company_id: uuid.UUID, user: User) -> dict:
         select(func.count(Task.id)).where(
             Task.company_id == company_id,
             Task.due_date < today,
-            Task.status.notin_(["done", "cancelled"]),
+            task_status.is_open(),
             Task.deleted_at.is_(None),
         )
     ) or 0
@@ -70,7 +72,7 @@ def company_metrics(db: Session, company_id: uuid.UUID, user: User) -> dict:
         select(func.count(Task.id)).where(
             Task.company_id == company_id,
             Task.assignee_id == user.id,
-            Task.status.notin_(["done", "cancelled"]),
+            task_status.is_open(),
             Task.deleted_at.is_(None),
         )
     ) or 0
@@ -186,7 +188,7 @@ def company_metrics(db: Session, company_id: uuid.UUID, user: User) -> dict:
 
     completion = db.scalar(
         select(func.count(Task.id)).where(
-            Task.company_id == company_id, Task.status == "done", Task.deleted_at.is_(None)
+            Task.company_id == company_id, task_status.is_done(), Task.deleted_at.is_(None)
         )
     ) or 0
     total_tasks = completion + open_tasks
@@ -250,7 +252,7 @@ def upcoming_deadlines(db: Session, company_id: uuid.UUID, days: int = 14) -> li
         .where(
             Task.company_id == company_id,
             Task.due_date.between(today - timedelta(days=7), horizon),
-            Task.status.notin_(["done", "cancelled"]),
+            task_status.is_open(),
             Task.deleted_at.is_(None),
         )
         .order_by(Task.due_date)
@@ -328,7 +330,7 @@ def workload(db: Session, company_id: uuid.UUID, limit: int = 8) -> list[dict]:
             Task,
             and_(
                 Task.assignee_id == User.id,
-                Task.status.notin_(["done", "cancelled"]),
+                task_status.is_open(),
                 Task.deleted_at.is_(None),
             ),
             isouter=True,
@@ -370,7 +372,7 @@ def generate_insights(db: Session, company_id: uuid.UUID, metrics: dict) -> list
             select(func.count(Task.id)).where(
                 Task.project_id == project.id,
                 Task.due_date < today,
-                Task.status.notin_(["done", "cancelled"]),
+                task_status.is_open(),
                 Task.deleted_at.is_(None),
             )
         ) or 0
@@ -506,3 +508,14 @@ def upcoming_meetings(db: Session, company_id: uuid.UUID, user_id: uuid.UUID, li
             .limit(limit)
         ).all()
     )
+
+
+def localized(items: list[dict], locale: str) -> list[dict]:
+    """Insight and deadline sentences in the reader's language."""
+    if locale != "fa":
+        return items
+    return [
+        {**item, "title": localize(locale, item.get("title")),
+         **({"body": localize(locale, item["body"])} if item.get("body") else {})}
+        for item in items
+    ]

@@ -2,7 +2,7 @@ import uuid
 from datetime import UTC, date, datetime
 from typing import Annotated
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Request
 from sqlalchemy import func, select
 
 from app.api.helpers import user_ref
@@ -11,8 +11,10 @@ from app.models.business import Deal, Transaction
 from app.models.identity import Department, User
 from app.models.innovation import Experiment, Idea
 from app.models.system import AuditLog
+from app.core.i18n import request_locale
 from app.models.work import Project, Task
 from app.services import insights
+from app.services import task_status
 
 router = APIRouter(tags=["dashboard"])
 
@@ -26,7 +28,7 @@ def greeting_for(hour: int) -> str:
 
 
 @router.get("/dashboard")
-def dashboard(db: DbSession, user: CurrentUser):
+def dashboard(request: Request, db: DbSession, user: CurrentUser):
     metrics = insights.company_metrics(db, user.company_id, user)
     if not can(db, user, "finance.read"):
         for key in ("monthly_revenue", "monthly_expenses", "previous_month_revenue",
@@ -36,7 +38,7 @@ def dashboard(db: DbSession, user: CurrentUser):
     my_tasks = db.scalars(
         select(Task).where(
             Task.company_id == user.company_id, Task.assignee_id == user.id,
-            Task.status.notin_(["done", "cancelled"]), Task.deleted_at.is_(None)
+            task_status.is_open(), Task.deleted_at.is_(None)
         ).order_by(Task.due_date.nulls_last(), Task.priority).limit(6)
     ).all()
     activity = db.scalars(
@@ -46,8 +48,11 @@ def dashboard(db: DbSession, user: CurrentUser):
     return {
         "greeting": greeting_for(datetime.now(UTC).hour),
         "metrics": metrics,
-        "insights": insights.generate_insights(db, user.company_id, metrics),
-        "deadlines": insights.upcoming_deadlines(db, user.company_id),
+        "insights": insights.localized(
+            insights.generate_insights(db, user.company_id, metrics),
+            request_locale(request, user.locale)),
+        "deadlines": insights.localized(
+            insights.upcoming_deadlines(db, user.company_id), request_locale(request, user.locale)),
         "workload": insights.workload(db, user.company_id),
         "decisions": [
             {"id": str(d.id), "title": d.title, "status": d.status,
@@ -76,7 +81,7 @@ def dashboard(db: DbSession, user: CurrentUser):
 
 
 @router.get("/analytics/company")
-def company_analytics(db: DbSession, user: Annotated[User, Depends(require("analytics.read"))]):
+def company_analytics(request: Request, db: DbSession, user: Annotated[User, Depends(require("analytics.read"))]):
     metrics = insights.company_metrics(db, user.company_id, user)
     projects_by_status = dict(
         db.execute(
@@ -123,7 +128,9 @@ def company_analytics(db: DbSession, user: Annotated[User, Depends(require("anal
         "ideas_by_status": ideas_by_status,
         "experiments_by_status": experiments_by_status,
         "throughput": throughput,
-        "insights": insights.generate_insights(db, user.company_id, metrics),
+        "insights": insights.localized(
+            insights.generate_insights(db, user.company_id, metrics),
+            request_locale(request, user.locale)),
     }
 
 
@@ -139,11 +146,11 @@ def project_analytics(db: DbSession, user: Annotated[User, Depends(require("anal
         total = db.scalar(select(func.count(Task.id)).where(
             Task.project_id == project.id, Task.deleted_at.is_(None))) or 0
         done = db.scalar(select(func.count(Task.id)).where(
-            Task.project_id == project.id, Task.status == "done",
+            Task.project_id == project.id, task_status.is_done(),
             Task.deleted_at.is_(None))) or 0
         overdue = db.scalar(select(func.count(Task.id)).where(
             Task.project_id == project.id, Task.due_date < today,
-            Task.status.notin_(["done", "cancelled"]), Task.deleted_at.is_(None))) or 0
+            task_status.is_open(), Task.deleted_at.is_(None))) or 0
         spent = float(db.scalar(select(func.sum(Transaction.amount)).where(
             Transaction.project_id == project.id, Transaction.kind == "expense",
             Transaction.deleted_at.is_(None))) or 0)
@@ -178,7 +185,7 @@ def people_analytics(db: DbSession, user: Annotated[User, Depends(require("analy
         for name, count in db.execute(
             select(User.full_name, func.count(Task.id))
             .join(Task, Task.assignee_id == User.id)
-            .where(User.company_id == user.company_id, Task.status == "done",
+            .where(User.company_id == user.company_id, task_status.is_done(),
                    Task.deleted_at.is_(None))
             .group_by(User.full_name).order_by(func.count(Task.id).desc()).limit(10)
         ).all()

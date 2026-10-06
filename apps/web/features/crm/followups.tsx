@@ -193,7 +193,7 @@ export function NextStepDialog({
       onSaved();
       onClose();
     } catch (error: any) {
-      toast.error(error?.message ?? "Failed");
+      toast.error(error?.message ?? t("common.requestFailed"));
     } finally {
       setBusy(false);
     }
@@ -209,7 +209,7 @@ export function NextStepDialog({
               autoFocus
               value={step}
               onChange={(event) => setStep(event.target.value)}
-              placeholder="Send the revised proposal"
+              placeholder={t("crm.nextStepPlaceholder")}
             />
           </Field>
           <Field label={t("crm.dueOn")}>

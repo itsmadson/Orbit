@@ -12,6 +12,7 @@ from datetime import UTC, datetime
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from app.core.i18n import localize
 from app.models.identity import User
 from app.models.system import Notification
 
@@ -81,6 +82,12 @@ def notify(
 ) -> Notification | None:
     if actor_id and actor_id == user_id:
         return None  # never notify someone about their own action
+    # Written once, in the reader's language: an inbox is read long after the
+    # request that caused it, by someone who may not share the actor's locale.
+    recipient = db.get(User, user_id)
+    locale = recipient.locale if recipient else "en"
+    title = localize(locale, title) or title
+    body = localize(locale, body)
     notification = Notification(
         company_id=company_id,
         user_id=user_id,
@@ -96,7 +103,6 @@ def notify(
     )
     db.add(notification)
     db.flush()
-    recipient = db.get(User, user_id)
     if recipient:
         for channel in _CHANNELS:
             channel.send(notification, recipient)
