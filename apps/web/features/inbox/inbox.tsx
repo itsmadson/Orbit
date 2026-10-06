@@ -173,7 +173,7 @@ export function InboxView() {
                     type="button"
                     onClick={() => archive.mutate(item.id)}
                     className="absolute end-3 top-1/2 hidden -translate-y-1/2 rounded p-1.5 text-faint transition-colors hover:bg-surface hover:text-text group-hover:block"
-                    title="Archive"
+                    title={t("inbox.archive")}
                   >
                     <Archive className="h-3.5 w-3.5" />
                   </button>

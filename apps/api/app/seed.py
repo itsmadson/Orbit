@@ -142,8 +142,9 @@ def seed(db: Session) -> None:
     _seed_decisions(db, company, users, projects, meetings, documents)
     _seed_workflows(db, company, users, projects)
     _seed_secretariat(db, company, users, projects)
-    _seed_support(db, company, users, projects)
     customers = _seed_crm(db, company, users, projects)
+    # Portal logins and tickets hang off CRM customers, so those come first.
+    _seed_support(db, company, users, projects)
     _seed_finance(db, company, users, projects, customers)
     _seed_assets(db, company, users)
     _seed_people_ops(db, company, users)

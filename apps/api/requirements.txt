@@ -3,8 +3,8 @@ uvicorn[standard]==0.34.0
 sqlalchemy==2.0.36
 alembic==1.14.0
 psycopg[binary]==3.2.3
-pydantic==2.10.4
-pydantic-settings==2.7.0
+pydantic==2.11.7
+pydantic-settings==2.9.1
 python-jose[cryptography]==3.3.0
 passlib[bcrypt]==1.7.4
 bcrypt==4.0.1
@@ -12,6 +12,11 @@ python-multipart==0.0.20
 email-validator==2.2.0
 httpx==0.28.1
 pgvector==0.3.6
+cryptography>=43.0
+
+# Assistant: Tau is the agent harness that runs the tool-calling loop
+# (https://twotimespi.dev). It needs pydantic >= 2.11.
+tau-ai==0.4.7
 
 # Secretariat: Jalali calendar, PDF and DOCX rendering for official letters
 jdatetime==5.0.0

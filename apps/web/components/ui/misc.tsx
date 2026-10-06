@@ -8,7 +8,8 @@ import * as TooltipPrimitive from "@radix-ui/react-tooltip";
 import * as SwitchPrimitive from "@radix-ui/react-switch";
 import * as CheckboxPrimitive from "@radix-ui/react-checkbox";
 import { ArrowDownRight, ArrowUpRight, Check } from "lucide-react";
-import { useI18n, useT } from "@/lib/i18n";
+import { useHumanize, useI18n, useT } from "@/lib/i18n";
+import { statusName, useTaskStatuses } from "@/lib/statuses";
 import { cn, formatDate, humanize, initials, relativeTime, STATUS_TONES } from "@/lib/utils";
 
 /* ------------------------------------------------------------------ avatar */
@@ -100,15 +101,34 @@ export function Badge({
 }
 
 export function StatusBadge({ status, className }: { status?: string | null; className?: string }) {
-  const t = useT();
+  const humanize = useHumanize();
+  const { locale, t } = useI18n();
+  const { statuses } = useTaskStatuses();
   if (!status) return null;
+  // A column someone added to the board carries its own name and colour.
+  const custom = statuses.find((item) => item.key === status);
+  if (custom && !(status in STATUS_TONES)) {
+    return (
+      <span
+        className={cn(
+          "inline-flex items-center gap-1 whitespace-nowrap rounded-full border px-2 py-0.5 text-[11px] font-medium leading-4",
+          className,
+        )}
+        style={{
+          color: custom.color,
+          borderColor: `color-mix(in oklab, ${custom.color} 35%, transparent)`,
+          backgroundColor: `color-mix(in oklab, ${custom.color} 14%, transparent)`,
+        }}
+      >
+        {statusName(custom, locale, t)}
+      </span>
+    );
+  }
   // Translated when the locale has a name for this state, humanised otherwise,
   // so a new status never renders as a missing key.
-  const key = `status.${status}`;
-  const label = t(key);
   return (
     <Badge tone={status} className={className}>
-      {label === key ? humanize(status) : label}
+      {custom ? statusName(custom, locale, t) : humanize(status)}
     </Badge>
   );
 }

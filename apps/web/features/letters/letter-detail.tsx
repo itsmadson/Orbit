@@ -47,7 +47,7 @@ export function LetterDetail({ letterId }: { letterId: string }) {
       toast.success(t(`letters.${action}`));
       refresh();
     } catch (error: any) {
-      toast.error(error?.message ?? "Failed");
+      toast.error(error?.message ?? t("common.requestFailed"));
     } finally {
       setBusy(null);
     }

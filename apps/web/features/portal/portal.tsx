@@ -280,7 +280,7 @@ function NewTicketDialog({
       client.invalidateQueries({ queryKey: ["/tickets"] });
       router.push(`/portal/tickets/${ticket.id}`);
     } catch (error: any) {
-      toast.error(error?.message ?? "Failed");
+      toast.error(error?.message ?? t("common.requestFailed"));
     } finally {
       setBusy(false);
     }

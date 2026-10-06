@@ -53,6 +53,17 @@ export type Task = {
   subtask_count: number;
   created_at: string;
   updated_at: string;
+  completed_at?: string | null;
+  /** Remote twins on GitHub / GitLab / Jira. */
+  external?: {
+    id: string;
+    provider: string;
+    remote_key: string;
+    remote_id: string;
+    url?: string | null;
+    remote_state?: string | null;
+    synced_at?: string | null;
+  }[];
   subtasks?: Task[];
   blocked_by?: Task[];
   blocks?: Task[];

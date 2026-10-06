@@ -13,7 +13,8 @@ import { Button } from "@/components/ui/button";
 import { SimpleSelect } from "@/components/ui/select";
 import { UserPicker } from "@/components/shared/pickers";
 import { useConfirm } from "@/components/ui/confirm";
-import { TASK_PRIORITIES, TASK_STATUSES } from "@/lib/utils";
+import { TASK_PRIORITIES } from "@/lib/utils";
+import { useStatusLabels } from "@/lib/statuses";
 
 /**
  * Triage, which is what a board is for on a Monday morning.
@@ -31,6 +32,7 @@ export function BulkBar({
   projectId?: string;
 }) {
   const t = useT();
+  const statusLabels = useStatusLabels();
   const client = useQueryClient();
   const confirm = useConfirm();
   const { can } = useSession();
@@ -53,7 +55,7 @@ export function BulkBar({
       toast.success(result.message ?? label);
       refresh();
     } catch (error: any) {
-      toast.error(error?.message ?? "Failed");
+      toast.error(error?.message ?? t("common.requestFailed"));
     } finally {
       setBusy(false);
     }
@@ -83,10 +85,7 @@ export function BulkBar({
         placeholder={t("common.status")}
         className="h-8 w-36"
         disabled={busy}
-        options={TASK_STATUSES.map((value) => ({
-          value,
-          label: t(`status.${value}`) === `status.${value}` ? value : t(`status.${value}`),
-        }))}
+        options={statusLabels.options(true)}
       />
 
       <SimpleSelect

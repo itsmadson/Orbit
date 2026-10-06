@@ -1,7 +1,8 @@
 import { Suspense } from "react";
 import { IdeasView } from "@/features/ideas/ideas-view";
+import { pageTitle } from "@/lib/page-title";
 
-export const metadata = { title: "Ideas" };
+export const generateMetadata = pageTitle("nav.ideas");
 
 export default function IdeasPage() {
   return (

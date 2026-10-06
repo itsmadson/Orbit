@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useQueryClient } from "@tanstack/react-query";
 import { Building2, Handshake, Mail, Phone, Plus, Receipt } from "lucide-react";
 import { api } from "@/lib/api";
-import { useI18n, useT } from "@/lib/i18n";
+import { useHumanize, useI18n, useT } from "@/lib/i18n";
 import { useCreate, useCreateParam, useDebounced, useItem, useList } from "@/lib/hooks";
 import { useSession } from "@/components/providers";
 import { MetricCard, PageHeader, Section } from "@/components/shared/page";
@@ -51,6 +51,7 @@ type Deal = {
 const STAGES = ["qualification", "proposal", "negotiation", "won", "lost"];
 
 export function CrmView() {
+  const humanize = useHumanize();
   const t = useT();
   const { locale } = useI18n();
   const { can, company } = useSession();
@@ -88,7 +89,7 @@ export function CrmView() {
         </span>
       ),
     },
-    { key: "industry", header: "Industry", cell: (row) => <span className="text-[12px] text-muted">{row.industry ?? "—"}</span> },
+    { key: "industry", header: t("crm.industry"), cell: (row) => <span className="text-[12px] text-muted">{row.industry ?? "—"}</span> },
     { key: "status", header: t("common.status"), cell: (row) => <StatusBadge status={row.status} /> },
     {
       key: "owner",
@@ -103,7 +104,7 @@ export function CrmView() {
           <span className="text-faint">—</span>
         ),
     },
-    { key: "deals", header: "Open deals", align: "center", cell: (row) => <span className="text-[12px]">{row.open_deals}</span> },
+    { key: "deals", header: t("crm.openDeals"), align: "center", cell: (row) => <span className="text-[12px]">{row.open_deals}</span> },
     {
       key: "pipeline",
       header: t("crm.pipeline"),
@@ -114,7 +115,7 @@ export function CrmView() {
     },
     {
       key: "annual",
-      header: "Annual value",
+      header: t("crm.annualValue"),
       align: "end",
       cell: (row) => (
         <span className="text-[12px] text-muted">
@@ -128,7 +129,7 @@ export function CrmView() {
     <div>
       <PageHeader
         title={t("crm.title")}
-        subtitle="Customers, deals and contracts — connected to the projects that deliver them"
+        subtitle={t("crm.subtitle")}
         actions={
           can("crm.write") ? (
             <>
@@ -154,13 +155,13 @@ export function CrmView() {
           icon={<Handshake className="h-3.5 w-3.5" />}
         />
         <MetricCard
-          label="Won"
+          label={t("crm.won")}
           value={formatCurrency(won?.value ?? 0, currency, locale, true)}
           hint={`${won?.count ?? 0} deals`}
           tone="positive"
         />
         <MetricCard
-          label="Customers"
+          label={t("crm.customers")}
           value={(customers.data?.items ?? []).filter((row) => row.status === "customer").length}
         />
       </div>
@@ -238,6 +239,7 @@ export function CrmView() {
 }
 
 function DealCard({ deal }: { deal: Deal }) {
+  const humanize = useHumanize();
   const { locale } = useI18n();
   const client = useQueryClient();
   const { can } = useSession();
@@ -296,8 +298,8 @@ function ContractsTable() {
 
   const columns: Column<any>[] = [
     { key: "title", header: t("common.title"), cell: (row) => <span className="font-medium">{row.title}</span> },
-    { key: "number", header: "Number", cell: (row) => <span className="font-mono text-[12px] text-muted">{row.number ?? "—"}</span> },
-    { key: "customer", header: "Customer", cell: (row) => <span className="text-[12px]">{row.crm_company_name ?? "—"}</span> },
+    { key: "number", header: t("common.number"), cell: (row) => <span className="font-mono text-[12px] text-muted">{row.number ?? "—"}</span> },
+    { key: "customer", header: t("common.customer"), cell: (row) => <span className="text-[12px]">{row.crm_company_name ?? "—"}</span> },
     { key: "status", header: t("common.status"), cell: (row) => <StatusBadge status={row.status} /> },
     {
       key: "value",
@@ -307,7 +309,7 @@ function ContractsTable() {
     },
     {
       key: "end",
-      header: "Ends",
+      header: t("crm.ends"),
       align: "end",
       cell: (row) => <span className="text-[12px] text-muted">{formatDate(row.end_date, locale)}</span>,
     },
@@ -332,6 +334,7 @@ function CustomerDialog({
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }) {
+  const humanize = useHumanize();
   const t = useT();
   const [form, setForm] = React.useState({
     name: "",
@@ -346,7 +349,7 @@ function CustomerDialog({
 
   const create = useCreate<Customer>("/crm/companies", {
     invalidate: ["/crm/companies"],
-    success: "Customer created",
+    success: t("crm.customerCreated"),
     onDone: () => onOpenChange(false),
   });
 
@@ -373,19 +376,19 @@ function CustomerDialog({
             />
           </Field>
           <div className="grid gap-3 sm:grid-cols-2">
-            <Field label="Industry">
+            <Field label={t("crm.industry")}>
               <Input
                 value={form.industry}
                 onChange={(event) => setForm({ ...form, industry: event.target.value })}
               />
             </Field>
-            <Field label="Country">
+            <Field label={t("crm.country")}>
               <Input
                 value={form.country}
                 onChange={(event) => setForm({ ...form, country: event.target.value })}
               />
             </Field>
-            <Field label="Website">
+            <Field label={t("crm.website")}>
               <Input
                 value={form.website}
                 onChange={(event) => setForm({ ...form, website: event.target.value })}
@@ -404,7 +407,7 @@ function CustomerDialog({
             <Field label={t("common.owner")}>
               <UserPicker value={form.owner_id} onChange={(owner_id) => setForm({ ...form, owner_id })} />
             </Field>
-            <Field label="Annual value">
+            <Field label={t("crm.annualValue")}>
               <Input
                 type="number"
                 value={form.annual_value}
@@ -441,6 +444,7 @@ export function DealDialog({
   onOpenChange: (open: boolean) => void;
   customerId?: string;
 }) {
+  const humanize = useHumanize();
   const t = useT();
   const customers = useList<Customer>("/crm/companies", { page_size: 100 });
   const projects = useProjects();
@@ -457,7 +461,7 @@ export function DealDialog({
 
   const create = useCreate<Deal>("/crm/deals", {
     invalidate: ["/crm/pipeline", "/crm/companies"],
-    success: "Deal created",
+    success: t("crm.dealCreated"),
     onDone: () => onOpenChange(false),
   });
 
@@ -487,7 +491,7 @@ export function DealDialog({
             />
           </Field>
           <div className="grid gap-3 sm:grid-cols-2">
-            <Field label="Customer">
+            <Field label={t("common.customer")}>
               <SimpleSelect
                 value={form.crm_company_id}
                 onValueChange={(crm_company_id) => setForm({ ...form, crm_company_id })}
@@ -526,7 +530,7 @@ export function DealDialog({
             <Field label={t("common.owner")}>
               <UserPicker value={form.owner_id} onChange={(owner_id) => setForm({ ...form, owner_id })} />
             </Field>
-            <Field label="Expected close">
+            <Field label={t("crm.expectedClose")}>
               <Input
                 type="date"
                 value={form.expected_close}
@@ -666,7 +670,7 @@ export function CustomerDetail({ customerId }: { customerId: string }) {
                 <Input
                   value={note}
                   onChange={(event) => setNote(event.target.value)}
-                  placeholder="Log a call, email or note…"
+                  placeholder={t("crm.logPlaceholder")}
                 />
                 <Button type="submit" variant="primary">
                   {t("action.add")}
@@ -730,7 +734,7 @@ export function CustomerDetail({ customerId }: { customerId: string }) {
                 <StatusBadge status={customer.status} />
               </DetailRow>
               <DetailRow label={t("common.owner")}>{customer.owner?.full_name ?? "—"}</DetailRow>
-              <DetailRow label="Annual value">
+              <DetailRow label={t("crm.annualValue")}>
                 {customer.annual_value
                   ? formatCurrency(customer.annual_value, company.currency, locale, true)
                   : "—"}

@@ -3,7 +3,7 @@
 import * as React from "react";
 import { useSearchParams } from "next/navigation";
 import { Plus } from "lucide-react";
-import { useT } from "@/lib/i18n";
+import { useHumanize, useT } from "@/lib/i18n";
 import { useCreateParam, useDebounced, useList } from "@/lib/hooks";
 import { useSession } from "@/components/providers";
 import type { Task } from "@/lib/types";
@@ -17,9 +17,9 @@ import { TaskTable } from "@/features/tasks/task-list";
 import { ViewBar } from "@/components/shared/view-bar";
 import { TaskDialog } from "@/features/tasks/task-form";
 import { useProjects } from "@/components/shared/pickers";
-import { humanize } from "@/lib/utils";
 
 export function TasksView() {
+  const humanize = useHumanize();
   const t = useT();
   const params = useSearchParams();
   const { can, user } = useSession();

@@ -52,7 +52,7 @@ export function BrainstormListView() {
 
   const create = useCreate<Board>("/brainstorm", {
     invalidate: ["/brainstorm"],
-    success: "Board created",
+    success: t("brainstorm.created"),
     onDone: () => {
       setOpen(false);
       setForm({ name: "", description: "", categories: [] });
@@ -63,7 +63,7 @@ export function BrainstormListView() {
     <div>
       <PageHeader
         title={t("brainstorm.title")}
-        subtitle="Collaborative boards that turn raw thinking into scored ideas"
+        subtitle={t("brainstorm.subtitle")}
         actions={
           can("brainstorm.write") ? (
             <Button variant="primary" onClick={() => setOpen(true)}>
@@ -137,7 +137,7 @@ export function BrainstormListView() {
                 onChange={(event) => setForm({ ...form, description: event.target.value })}
               />
             </Field>
-            <Field label="Categories" hint="Enter to add">
+            <Field label={t("brainstorm.categories")} hint={t("common.enterToAdd")}>
               <TagInput
                 value={form.categories}
                 onChange={(categories) => setForm({ ...form, categories })}
@@ -327,7 +327,7 @@ export function BrainstormBoardView({ boardId }: { boardId: string }) {
                       onClick={async () => {
                         try {
                           await api.post(`/brainstorm/${boardId}/cards/${card.id}/promote`);
-                          toast.success("Promoted to idea");
+                          toast.success(t("brainstorm.promoted"));
                           refresh();
                         } catch (error: any) {
                           toast.error(error.message);

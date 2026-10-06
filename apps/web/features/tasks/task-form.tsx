@@ -2,7 +2,8 @@
 
 import * as React from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { useT } from "@/lib/i18n";
+import { useHumanize, useT } from "@/lib/i18n";
+import { useStatusLabels } from "@/lib/statuses";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogFooter, DialogHeader } from "@/components/ui/dialog";
 import { Field, Input, Textarea } from "@/components/ui/input";
@@ -12,7 +13,6 @@ import { useCreate } from "@/lib/hooks";
 import type { Task } from "@/lib/types";
 
 export const TASK_TYPES = ["task", "bug", "feature", "story", "epic", "subtask"];
-export const TASK_STATUSES = ["backlog", "todo", "in_progress", "in_review", "done"];
 export const PRIORITIES = ["low", "medium", "high", "urgent"];
 
 export function TaskDialog({
@@ -27,6 +27,8 @@ export function TaskDialog({
   onCreated?: (task: Task) => void;
 }) {
   const t = useT();
+  const humanize = useHumanize();
+  const statusLabels = useStatusLabels();
   const client = useQueryClient();
   const projects = useProjects();
   const [form, setForm] = React.useState({
@@ -54,7 +56,7 @@ export function TaskDialog({
 
   const create = useCreate<Task>("/tasks", {
     invalidate: ["/tasks", "/tasks/board", "/projects", "dashboard"],
-    success: "Task created",
+    success: t("tasks.created"),
     onDone: (task) => {
       onOpenChange(false);
       setForm({ ...form, title: "", description: "", labels: [] });
@@ -84,7 +86,7 @@ export function TaskDialog({
               autoFocus
               value={form.title}
               onChange={(event) => setForm({ ...form, title: event.target.value })}
-              placeholder="What needs to be done?"
+              placeholder={t("tasks.titlePlaceholder")}
             />
           </Field>
           <Field label={t("common.description")}>
@@ -109,21 +111,21 @@ export function TaskDialog({
               <SimpleSelect
                 value={form.type}
                 onValueChange={(type) => setForm({ ...form, type })}
-                options={TASK_TYPES.map((value) => ({ value, label: value }))}
+                options={TASK_TYPES.map((value) => ({ value, label: humanize(value) }))}
               />
             </Field>
             <Field label={t("common.status")}>
               <SimpleSelect
                 value={form.status}
                 onValueChange={(status) => setForm({ ...form, status })}
-                options={TASK_STATUSES.map((value) => ({ value, label: value.replace("_", " ") }))}
+                options={statusLabels.options()}
               />
             </Field>
             <Field label={t("common.priority")}>
               <SimpleSelect
                 value={form.priority}
                 onValueChange={(priority) => setForm({ ...form, priority })}
-                options={PRIORITIES.map((value) => ({ value, label: value }))}
+                options={PRIORITIES.map((value) => ({ value, label: humanize(value) }))}
               />
             </Field>
             <Field label={t("common.assignee")}>

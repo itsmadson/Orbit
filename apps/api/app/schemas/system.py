@@ -68,6 +68,16 @@ class AiAnswer(BaseModel):
     model: str | None = None
     sources: list[AiSource] = []
     conversation_id: uuid.UUID | None = None
+    #: What the agent did to get here: one entry per tool call.
+    steps: list[dict] = []
+    #: Writes waiting for the user's approval.
+    actions: list[dict] = []
+    #: True when the workspace was changed, so the UI knows to refetch.
+    changed: bool = False
+
+
+class AiActionDecision(BaseModel):
+    decision: str  # approve | reject
 
 
 class AiStatus(BaseModel):
@@ -76,6 +86,11 @@ class AiStatus(BaseModel):
     model: str | None = None
     generative: bool
     suggested_prompts: list[str] = []
+    #: The assistant can act (create, update, delete), not only answer.
+    agent: bool = False
+    engine: str | None = None
+    daily_limit: int | None = None
+    used_today: int = 0
 
 
 class IntegrationOut(ORMModel):

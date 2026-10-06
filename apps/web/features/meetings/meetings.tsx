@@ -35,7 +35,7 @@ export function MeetingsView() {
     <div>
       <PageHeader
         title={t("meetings.title")}
-        subtitle="Meetings that produce decisions and action items, not just notes"
+        subtitle={t("meetings.subtitle")}
         actions={
           can("meetings.write") ? (
             <Button variant="primary" onClick={() => setCreateOpen(true)}>
@@ -159,7 +159,7 @@ export function MeetingDialog({
 
   const create = useCreate<Meeting>("/meetings", {
     invalidate: ["/meetings", "dashboard"],
-    success: "Meeting scheduled",
+    success: t("meetings.scheduled"),
     onDone: () => onOpenChange(false),
   });
 
@@ -189,7 +189,7 @@ export function MeetingDialog({
             />
           </Field>
           <div className="grid gap-3 sm:grid-cols-2">
-            <Field label="Starts">
+            <Field label={t("meetings.starts")}>
               <Input
                 type="datetime-local"
                 required
@@ -197,18 +197,18 @@ export function MeetingDialog({
                 onChange={(event) => setForm({ ...form, starts_at: event.target.value })}
               />
             </Field>
-            <Field label="Ends">
+            <Field label={t("meetings.ends")}>
               <Input
                 type="datetime-local"
                 value={form.ends_at}
                 onChange={(event) => setForm({ ...form, ends_at: event.target.value })}
               />
             </Field>
-            <Field label="Location">
+            <Field label={t("common.location")}>
               <Input
                 value={form.location}
                 onChange={(event) => setForm({ ...form, location: event.target.value })}
-                placeholder="Meeting room A / Zoom"
+                placeholder={t("meetings.locationPlaceholder")}
               />
             </Field>
             <Field label={t("common.project")}>
@@ -242,7 +242,7 @@ export function MeetingDialog({
                 <Input
                   value={agendaDraft}
                   onChange={(event) => setAgendaDraft(event.target.value)}
-                  placeholder="Agenda item"
+                  placeholder={t("meetings.agendaItem")}
                   onKeyDown={(event) => {
                     if (event.key === "Enter" && agendaDraft.trim()) {
                       event.preventDefault();
@@ -322,7 +322,7 @@ export function MeetingDetail({ meetingId }: { meetingId: string }) {
       const task = await api.post<{ id: string; key: string }>(
         `/meetings/${meetingId}/action-items/${itemId}/to-task`,
       );
-      toast.success(`Created ${task.key}`);
+      toast.success(t("meetings.taskCreated", { key: task.key }));
       refresh();
       client.invalidateQueries({ queryKey: ["/tasks"] });
     } catch (error: any) {
@@ -359,10 +359,10 @@ export function MeetingDetail({ meetingId }: { meetingId: string }) {
               }}
               className="w-28"
               options={[
-                { value: "yes", label: "Going" },
-                { value: "maybe", label: "Maybe" },
-                { value: "no", label: "Not going" },
-                { value: "pending", label: "Pending" },
+                { value: "yes", label: t("meetings.rsvp.yes") },
+                { value: "maybe", label: t("meetings.rsvp.maybe") },
+                { value: "no", label: t("meetings.rsvp.no") },
+                { value: "pending", label: t("status.pending") },
               ]}
             />
             {can("decisions.write") ? (
@@ -536,9 +536,9 @@ export function MeetingDetail({ meetingId }: { meetingId: string }) {
               <DetailRow label={t("common.status")}>
                 <StatusBadge status={meeting.status} />
               </DetailRow>
-              <DetailRow label="Organizer">{meeting.organizer?.full_name ?? "—"}</DetailRow>
-              <DetailRow label="Starts">{formatDate(meeting.starts_at, locale, true)}</DetailRow>
-              <DetailRow label="Ends">{formatDate(meeting.ends_at, locale, true)}</DetailRow>
+              <DetailRow label={t("meetings.organizer")}>{meeting.organizer?.full_name ?? "—"}</DetailRow>
+              <DetailRow label={t("meetings.starts")}>{formatDate(meeting.starts_at, locale, true)}</DetailRow>
+              <DetailRow label={t("meetings.ends")}>{formatDate(meeting.ends_at, locale, true)}</DetailRow>
             </div>
           </Section>
 
@@ -620,7 +620,12 @@ export function CalendarView() {
 
       <div className="panel overflow-hidden">
         <div className="grid grid-cols-7 border-b border-border text-[11px] uppercase tracking-wide text-faint">
-          {["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].map((day) => (
+          {[1, 2, 3, 4, 5, 6, 7].map((day) =>
+            // 2024-01-01 was a Monday; Intl names the weekday in the reader's language.
+            new Intl.DateTimeFormat(locale === "fa" ? "fa-IR" : "en-GB", { weekday: "short" }).format(
+              new Date(2024, 0, day),
+            ),
+          ).map((day) => (
             <div key={day} className="px-2 py-2 text-center">
               {day}
             </div>

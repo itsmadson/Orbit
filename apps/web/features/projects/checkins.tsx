@@ -67,7 +67,7 @@ export function ProjectCheckins({ projectId }: { projectId: string }) {
       client.invalidateQueries({ queryKey: [`/projects/${projectId}`] });
       client.invalidateQueries({ queryKey: ["/projects"] });
     } catch (error: any) {
-      toast.error(error?.message ?? "Failed");
+      toast.error(error?.message ?? t("common.requestFailed"));
     } finally {
       setBusy(false);
     }

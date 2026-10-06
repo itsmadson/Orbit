@@ -10,7 +10,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { api } from "@/lib/api";
-import { useT } from "@/lib/i18n";
+import { useHumanize, useT } from "@/lib/i18n";
 import { OrbitLoading } from "@/components/ui/orbit-loader";
 import { useConfirm } from "@/components/ui/confirm";
 import { CommentBody, MentionInput } from "@/components/shared/mention-input";
@@ -92,7 +92,7 @@ export function Comments({ entityType, entityId }: { entityType: string; entityI
               <div className="min-w-0 flex-1">
                 <div className="flex items-baseline gap-2">
                   <span className="text-[13px] font-medium">
-                    {comment.author?.full_name ?? "Unknown"}
+                    {comment.author?.full_name ?? t("common.unknown")}
                   </span>
                   <span className="text-[11px] text-faint">{<TimeAgo value={comment.created_at} />}</span>
                 </div>
@@ -291,6 +291,7 @@ export function RelatedPanel({
   entityId: string;
   className?: string;
 }) {
+  const humanize = useHumanize();
   const t = useT();
   const { data, isLoading } = useQuery({
     queryKey: ["relations", entityType, entityId],
@@ -316,7 +317,7 @@ export function RelatedPanel({
             <Icon className="h-3.5 w-3.5 shrink-0 text-faint" />
             <span className="min-w-0 flex-1 truncate text-[13px]">{relation.node.title}</span>
             <span className="shrink-0 text-[10px] uppercase tracking-wide text-faint">
-              {relation.rel_type.replace(/_/g, " ")}
+              {humanize(relation.rel_type)}
             </span>
           </Link>
         );
@@ -345,7 +346,7 @@ export function ActivityFeed({ items, compact }: { items: Activity[]; compact?: 
           <Avatar name={item.actor?.full_name} color={item.actor?.avatar_color} size={22} />
           <div className="min-w-0 flex-1">
             <p className="text-[13px] leading-snug">
-              <span className="font-medium">{item.actor?.full_name ?? "System"}</span>{" "}
+              <span className="font-medium">{item.actor?.full_name ?? t("common.system")}</span>{" "}
               <span className="text-muted">{item.summary ?? item.action}</span>
             </p>
             {!compact && item.changes && Object.keys(item.changes).length ? (
