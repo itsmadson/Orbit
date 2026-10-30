@@ -85,7 +85,7 @@ services:
     # Stock Node image; docker/web-entrypoint.sh installs deps (only when the
     # lockfile changes) and builds the mounted source on every start, so a code
     # change only needs `docker compose restart orbit-web`.
-    image: orbit-orbit-web:latest
+    image: node:22-alpine
     container_name: orbit-web
     restart: unless-stopped
     depends_on:
@@ -100,8 +100,10 @@ services:
       # Docker sets HOSTNAME to the container id; the standalone server binds to it.
       HOSTNAME: 0.0.0.0
     working_dir: /app
+    entrypoint: ["/usr/local/bin/orbit-web-entrypoint"]
     volumes:
       - ./apps/web:/app
+      - ./docker/web-entrypoint.sh:/usr/local/bin/orbit-web-entrypoint:ro
       - orbit-web-node-modules:/app/node_modules
       - orbit-web-next:/app/.next
     ports:
