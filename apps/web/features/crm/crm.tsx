@@ -10,7 +10,7 @@ import { useCreate, useCreateParam, useDebounced, useItem, useList } from "@/lib
 import { useSession } from "@/components/providers";
 import { MetricCard, PageHeader, Section } from "@/components/shared/page";
 import { Column, DataTable, FilterChips, SearchInput, Toolbar } from "@/components/shared/data";
-import { DetailRow, LoadingPanel, RelatedPanel } from "@/components/shared/entity";
+import { DeleteButton, DetailRow, LoadingPanel, RelatedPanel } from "@/components/shared/entity";
 import { Avatar, Badge, EmptyState, Progress, StatusBadge, Tabs, TabsContent, TabsList, TabsTrigger, TimeAgo } from "@/components/ui/misc";
 import { Button } from "@/components/ui/button";
 import { Followups } from "@/features/crm/followups";
@@ -596,12 +596,22 @@ export function CustomerDetail({ customerId }: { customerId: string }) {
           </span>
         }
         actions={
-          can("crm.write") ? (
-            <Button variant="primary" onClick={() => setDealOpen(true)}>
-              <Plus className="h-3.5 w-3.5" />
-              {t("crm.newDeal")}
-            </Button>
-          ) : null
+          <>
+            {can("crm.write") ? (
+              <Button variant="primary" onClick={() => setDealOpen(true)}>
+                <Plus className="h-3.5 w-3.5" />
+                {t("crm.newDeal")}
+              </Button>
+            ) : null}
+            {can("crm.manage") ? (
+              <DeleteButton
+                path={`/crm/companies/${customerId}`}
+                name={customer.name}
+                redirect="/crm"
+                invalidate={["/crm/companies"]}
+              />
+            ) : null}
+          </>
         }
       />
 

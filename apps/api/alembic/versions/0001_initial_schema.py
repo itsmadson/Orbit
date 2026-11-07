@@ -33,6 +33,8 @@ LATER_TABLES = {
     "monitors", "monitor_checks", "tickets", "monitor_incidents", "ticket_messages",
     # 0006
     "task_statuses", "integration_links", "external_issues",
+    # 0007
+    "project_modules", "module_members",
 }
 LATER_COLUMNS = {
     "crm_deals": {"next_step", "next_step_due", "last_activity_at"},   # 0004

@@ -4,7 +4,7 @@ import * as React from "react";
 import Link from "next/link";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
-  Banknote, Calendar, FileText, Gavel, Plus, Target, Users,
+  Banknote, Calendar, FileText, Gavel, Pencil, Plus, Target, Users, X,
 } from "lucide-react";
 import { toast } from "sonner";
 import { api } from "@/lib/api";
@@ -13,13 +13,17 @@ import { useItem, useList } from "@/lib/hooks";
 import { useSession } from "@/components/providers";
 import type { ProjectSummary, Task } from "@/lib/types";
 import { MetricCard, PageHeader, Section } from "@/components/shared/page";
-import { ActivityFeed, LoadingPanel, RelatedPanel } from "@/components/shared/entity";
+import { ActivityFeed, DeleteButton, LoadingPanel, RelatedPanel } from "@/components/shared/entity";
 import { Avatar, AvatarGroup, EmptyState, Progress, StatusBadge, Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/misc";
 import { Button } from "@/components/ui/button";
+import { useConfirm } from "@/components/ui/confirm";
 import { SimpleSelect } from "@/components/ui/select";
 import { TaskBoard } from "@/features/tasks/task-board";
 import { TaskTable } from "@/features/tasks/task-list";
 import { ProjectCheckins } from "@/features/projects/checkins";
+import { ProjectMilestones, type Milestone } from "@/features/projects/milestones";
+import { ProjectModules, type ProjectModule } from "@/features/projects/modules";
+import { ProjectDialog } from "@/features/projects/project-form";
 import { TaskDialog } from "@/features/tasks/task-form";
 import { UserPicker } from "@/components/shared/pickers";
 import { cn, formatCurrency, formatDate, formatNumber, isOverdue } from "@/lib/utils";
@@ -27,7 +31,8 @@ import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip as ReTooltip } from "
 
 type ProjectDetail = ProjectSummary & {
   members: { id: string; role: string; user: any }[];
-  milestones: { id: string; name: string; due_date?: string; status: string; progress: number }[];
+  milestones: Milestone[];
+  modules: ProjectModule[];
   stats: Record<string, number>;
   description?: string | null;
 };
@@ -50,7 +55,9 @@ export function ProjectDetailView({ projectId }: { projectId: string }) {
   const client = useQueryClient();
   const { can, company } = useSession();
   const canWrite = can("projects.write");
+  const confirm = useConfirm();
   const [createTask, setCreateTask] = React.useState(false);
+  const [editing, setEditing] = React.useState(false);
 
   const { data, isLoading } = useQuery({
     queryKey: [`/projects/${projectId}/overview`],
@@ -70,6 +77,24 @@ export function ProjectDetailView({ projectId }: { projectId: string }) {
       client.invalidateQueries({ queryKey: [`/projects/${projectId}/overview`] });
       client.invalidateQueries({ queryKey: ["/projects"] });
       toast.success(t("action.save"));
+    } catch (error: any) {
+      toast.error(error.message);
+    }
+  };
+
+  const removeMember = async (member: ProjectDetail["members"][number]) => {
+    const ok = await confirm({
+      title: `${t("action.remove")} ${member.user?.full_name ?? ""}`,
+      body: t("projects.removeMemberConfirm")
+        .replace("{name}", member.user?.full_name ?? "")
+        .replace("{project}", project.name),
+      confirmLabel: t("action.remove"),
+      destructive: true,
+    });
+    if (!ok) return;
+    try {
+      await api.delete(`/projects/${projectId}/members/${member.user?.id}`);
+      client.invalidateQueries({ queryKey: [`/projects/${projectId}/overview`] });
     } catch (error: any) {
       toast.error(error.message);
     }
@@ -104,6 +129,10 @@ export function ProjectDetailView({ projectId }: { projectId: string }) {
                     label: humanize(value),
                   }))}
                 />
+                <Button variant="secondary" onClick={() => setEditing(true)}>
+                  <Pencil className="h-3.5 w-3.5" />
+                  {t("action.edit")}
+                </Button>
                 <Button variant="primary" onClick={() => setCreateTask(true)}>
                   <Plus className="h-3.5 w-3.5" />
                   {t("tasks.new")}
@@ -115,6 +144,18 @@ export function ProjectDetailView({ projectId }: { projectId: string }) {
                 <StatusBadge status={project.health} />
               </>
             )}
+            {can("projects.manage") ? (
+              <DeleteButton
+                path={`/projects/${projectId}`}
+                name={project.name}
+                body={t("projects.deleteConfirm")
+                  .replace("{title}", project.name)
+                  .replace("{count}", formatNumber(stats.total_tasks ?? 0, locale))}
+                redirect="/projects"
+                invalidate={["/projects", "/tasks", "/tasks/board"]}
+                success={t("projects.deleted")}
+              />
+            ) : null}
           </>
         }
       />
@@ -171,6 +212,9 @@ export function ProjectDetailView({ projectId }: { projectId: string }) {
       <Tabs defaultValue="overview">
         <TabsList className="mb-4">
           <TabsTrigger value="overview">{t("common.overview")}</TabsTrigger>
+          <TabsTrigger value="modules" count={project.modules?.length ?? 0}>
+            {t("projects.modules")}
+          </TabsTrigger>
           <TabsTrigger value="board">{t("projects.board")}</TabsTrigger>
           <TabsTrigger value="list">{t("projects.list")}</TabsTrigger>
           <TabsTrigger value="timeline">{t("projects.timeline")}</TabsTrigger>
@@ -185,38 +229,11 @@ export function ProjectDetailView({ projectId }: { projectId: string }) {
           <div className="grid gap-4 lg:grid-cols-3">
             <div className="space-y-4 lg:col-span-2">
               <ProjectCheckins projectId={projectId} />
-              <Section title={t("projects.milestones")} contentClassName="p-0">
-                {project.milestones.length ? (
-                  <ul>
-                    {project.milestones.map((milestone) => (
-                      <li
-                        key={milestone.id}
-                        className="flex items-center gap-3 border-b border-border/60 px-4 py-2.5 last:border-0"
-                      >
-                        <Target className="h-3.5 w-3.5 shrink-0 text-faint" />
-                        <span className="min-w-0 flex-1 truncate text-[13px]">{milestone.name}</span>
-                        <Progress value={milestone.progress} className="w-24" />
-                        <span className="w-10 text-end text-[11px] text-muted">
-                          {milestone.progress}%
-                        </span>
-                        <span
-                          className={cn(
-                            "w-24 text-end text-[11px]",
-                            isOverdue(milestone.due_date) && milestone.status !== "completed"
-                              ? "text-danger"
-                              : "text-muted",
-                          )}
-                        >
-                          {formatDate(milestone.due_date, locale)}
-                        </span>
-                        <StatusBadge status={milestone.status} />
-                      </li>
-                    ))}
-                  </ul>
-                ) : (
-                  <p className="p-4 text-[13px] text-faint">{t("common.empty")}</p>
-                )}
-              </Section>
+              <ProjectMilestones
+                projectId={projectId}
+                milestones={project.milestones}
+                canWrite={canWrite}
+              />
 
               <div className="grid gap-4 sm:grid-cols-2">
                 <Section title={t("meetings.title")} contentClassName="p-0">
@@ -319,7 +336,7 @@ export function ProjectDetailView({ projectId }: { projectId: string }) {
               >
                 <ul className="space-y-2">
                   {project.members.map((member) => (
-                    <li key={member.id} className="flex items-center gap-2">
+                    <li key={member.id} className="group flex items-center gap-2">
                       <Avatar
                         name={member.user?.full_name}
                         color={member.user?.avatar_color}
@@ -337,6 +354,17 @@ export function ProjectDetailView({ projectId }: { projectId: string }) {
                       <span className="text-[10px] uppercase tracking-wide text-faint">
                         {member.role}
                       </span>
+                      {canWrite && member.user?.id !== project.lead?.id ? (
+                        <button
+                          type="button"
+                          aria-label={t("action.remove")}
+                          title={t("action.remove")}
+                          onClick={() => removeMember(member)}
+                          className="rounded p-0.5 text-faint opacity-0 transition hover:text-danger focus:opacity-100 group-hover:opacity-100"
+                        >
+                          <X className="h-3.5 w-3.5" />
+                        </button>
+                      ) : null}
                     </li>
                   ))}
                 </ul>
@@ -383,6 +411,14 @@ export function ProjectDetailView({ projectId }: { projectId: string }) {
               </Section>
             </aside>
           </div>
+        </TabsContent>
+
+        <TabsContent value="modules">
+          <ProjectModules
+            projectId={projectId}
+            modules={project.modules ?? []}
+            canWrite={canWrite}
+          />
         </TabsContent>
 
         <TabsContent value="board">
@@ -437,6 +473,7 @@ export function ProjectDetailView({ projectId }: { projectId: string }) {
         </TabsContent>
       </Tabs>
 
+      <ProjectDialog open={editing} onOpenChange={setEditing} project={project} />
       <TaskDialog
         open={createTask}
         onOpenChange={setCreateTask}

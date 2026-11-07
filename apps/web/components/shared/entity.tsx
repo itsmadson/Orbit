@@ -2,6 +2,7 @@
 
 import * as React from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   Atom, Banknote, Building2, Calendar, CheckSquare, ClipboardList, Download, FileSignature,
@@ -11,6 +12,7 @@ import {
 import { toast } from "sonner";
 import { api } from "@/lib/api";
 import { useHumanize, useT } from "@/lib/i18n";
+import { useRemove } from "@/lib/hooks";
 import { OrbitLoading } from "@/components/ui/orbit-loader";
 import { useConfirm } from "@/components/ui/confirm";
 import { CommentBody, MentionInput } from "@/components/shared/mention-input";
@@ -379,6 +381,60 @@ export function DetailRow({
       <span className="shrink-0 text-[12px] text-muted">{label}</span>
       <span className="min-w-0 text-end text-[13px]">{children}</span>
     </div>
+  );
+}
+
+/**
+ * The delete control on a detail page: asks first, deletes, then leaves for the
+ * list the item lived in. One component so every page asks the same question.
+ */
+export function DeleteButton({
+  path,
+  name,
+  body,
+  redirect,
+  invalidate = [],
+  success,
+}: {
+  /** API path of the item, e.g. `/ideas/123`. */
+  path: string;
+  /** What the item is called, shown in the confirmation. */
+  name: string;
+  /** Overrides the generic "will be removed" text when deleting does more. */
+  body?: React.ReactNode;
+  /** Where to go once it is gone. */
+  redirect: string;
+  invalidate?: string[];
+  success?: string;
+}) {
+  const t = useT();
+  const router = useRouter();
+  const confirm = useConfirm();
+  const remove = useRemove(() => path, {
+    invalidate: [...invalidate, "dashboard"],
+    success: success ?? t("common.deleted"),
+    onDone: () => router.push(redirect),
+  });
+
+  return (
+    <Button
+      variant="ghost"
+      size="icon"
+      title={t("action.delete")}
+      aria-label={t("action.delete")}
+      loading={remove.isPending}
+      onClick={async () => {
+        const ok = await confirm({
+          title: `${t("action.delete")} ${name}`,
+          body: body ?? t("common.deleteConfirm").replace("{title}", name),
+          confirmLabel: t("action.delete"),
+          destructive: true,
+        });
+        if (ok) remove.mutate(path);
+      }}
+    >
+      <Trash2 className="h-4 w-4" />
+    </Button>
   );
 }
 
