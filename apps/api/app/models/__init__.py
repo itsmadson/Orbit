@@ -28,14 +28,14 @@ from app.models.system import (
     SavedView,
 )
 from app.models.work import (
-    Milestone, Project, ProjectCheckin, ProjectMember, Sprint, Sprint as SprintModel,
+    Milestone, ModuleMember, Project, ProjectCheckin, ProjectMember, ProjectModule, Sprint, Sprint as SprintModel,
     Task, TaskDependency, TaskStatus,
 )
 
 __all__ = [
     "Base", "OrbitBase", "SoftDeleteMixin", "TimestampMixin", "UUIDMixin",
     "Company", "Department", "User", "UserSession", "PermissionGrant",
-    "Project", "ProjectMember", "Milestone", "Sprint", "Task", "TaskDependency",
+    "Project", "ProjectMember", "Milestone", "ModuleMember", "ProjectModule", "Sprint", "Task", "TaskDependency",
     "Idea", "IdeaVote", "IdeaContributor", "BrainstormBoard", "BrainstormCard",
     "ResearchProject", "Experiment",
     "WikiSpace", "Document", "DocumentVersion", "Decision",

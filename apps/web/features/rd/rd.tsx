@@ -11,7 +11,7 @@ import { useSession } from "@/components/providers";
 import type { Experiment, Research } from "@/lib/types";
 import { MetricCard, PageHeader, Section } from "@/components/shared/page";
 import { Column, DataTable, FilterChips, SearchInput, Toolbar } from "@/components/shared/data";
-import { Comments, DetailRow, LoadingPanel, RelatedPanel } from "@/components/shared/entity";
+import { Comments, DeleteButton, DetailRow, LoadingPanel, RelatedPanel } from "@/components/shared/entity";
 import { Avatar, Badge, EmptyState, Progress, Skeleton, StatusBadge, Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/misc";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogFooter, DialogHeader } from "@/components/ui/dialog";
@@ -263,6 +263,14 @@ export function ResearchDetail({ researchId }: { researchId: string }) {
                 <Plus className="h-3.5 w-3.5" />
                 {t("rd.newExperiment")}
               </Button>
+              {can("rd.manage") ? (
+                <DeleteButton
+                  path={`/rd/${researchId}`}
+                  name={research.title}
+                  redirect="/rd"
+                  invalidate={["/rd"]}
+                />
+              ) : null}
             </>
           ) : (
             <StatusBadge status={research.status} />
@@ -634,15 +642,25 @@ export function ExperimentDetail({ experimentId }: { experimentId: string }) {
         }
         actions={
           can("rd.write") ? (
-            <SimpleSelect
-              value={experiment.status}
-              onValueChange={async (status) => {
-                await api.patch(`/experiments/${experimentId}`, { status });
-                refresh();
-              }}
-              className="w-36"
-              options={EXPERIMENT_STATUSES.map((value) => ({ value, label: humanize(value) }))}
-            />
+            <>
+              <SimpleSelect
+                value={experiment.status}
+                onValueChange={async (status) => {
+                  await api.patch(`/experiments/${experimentId}`, { status });
+                  refresh();
+                }}
+                className="w-36"
+                options={EXPERIMENT_STATUSES.map((value) => ({ value, label: humanize(value) }))}
+              />
+              {can("rd.manage") ? (
+                <DeleteButton
+                  path={`/experiments/${experimentId}`}
+                  name={experiment.name}
+                  redirect={experiment.research_id ? `/rd/${experiment.research_id}` : "/experiments"}
+                  invalidate={["/experiments", `/rd/${experiment.research_id}/experiments`]}
+                />
+              ) : null}
+            </>
           ) : (
             <StatusBadge status={experiment.status} />
           )

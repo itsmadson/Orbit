@@ -11,7 +11,7 @@ import { useCreate, useCreateParam, useItem, useList } from "@/lib/hooks";
 import { useSession } from "@/components/providers";
 import type { Meeting } from "@/lib/types";
 import { PageHeader, Section } from "@/components/shared/page";
-import { Comments, DetailRow, LoadingPanel, RelatedPanel } from "@/components/shared/entity";
+import { Comments, DeleteButton, DetailRow, LoadingPanel, RelatedPanel } from "@/components/shared/entity";
 import { Avatar, AvatarGroup, Badge, EmptyState, Skeleton, StatusBadge, Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/misc";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogFooter, DialogHeader } from "@/components/ui/dialog";
@@ -370,6 +370,14 @@ export function MeetingDetail({ meetingId }: { meetingId: string }) {
                 <Gavel className="h-3.5 w-3.5" />
                 {t("meetings.createDecision")}
               </Button>
+            ) : null}
+            {can("meetings.write") ? (
+              <DeleteButton
+                path={`/meetings/${meetingId}`}
+                name={meeting.title}
+                redirect="/meetings"
+                invalidate={["/meetings", "/calendar"]}
+              />
             ) : null}
           </>
         }

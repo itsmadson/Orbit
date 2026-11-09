@@ -22,6 +22,10 @@ services:
       start_period: 10s
 
   orbit-api:
+    # Image holds the Python deps; the code is mounted below, so a code change
+    # only needs `docker compose restart orbit-api`. Rebuild (`--build`) only
+    # when requirements.txt or the Dockerfile changes.
+    image: orbit-orbit-api:latest
     build:
       context: .
       dockerfile: docker/api.Dockerfile
@@ -66,6 +70,7 @@ services:
       STORAGE_LOCAL_PATH: /data/files
       RATE_LIMIT_PER_MINUTE: ${RATE_LIMIT_PER_MINUTE:-600}
     volumes:
+      - ./apps/api:/app
       - orbit-files:/data/files
     ports:
       - "${API_PORT:-8000}:8000"
@@ -77,11 +82,10 @@ services:
       start_period: 60s
 
   orbit-web:
-    build:
-      context: .
-      dockerfile: docker/web.Dockerfile
-      args:
-        NEXT_PUBLIC_APP_NAME: ${NEXT_PUBLIC_APP_NAME:-ORBIT}
+    # Stock Node image; docker/web-entrypoint.sh installs deps (only when the
+    # lockfile changes) and builds the mounted source on every start, so a code
+    # change only needs `docker compose restart orbit-web`.
+    image: node:22-alpine
     container_name: orbit-web
     restart: unless-stopped
     depends_on:
@@ -92,6 +96,16 @@ services:
       ORBIT_API_URL: http://orbit-api:8000
       NEXT_PUBLIC_APP_NAME: ${NEXT_PUBLIC_APP_NAME:-ORBIT}
       NEXT_TELEMETRY_DISABLED: "1"
+      PORT: 3000
+      # Docker sets HOSTNAME to the container id; the standalone server binds to it.
+      HOSTNAME: 0.0.0.0
+    working_dir: /app
+    entrypoint: ["/usr/local/bin/orbit-web-entrypoint"]
+    volumes:
+      - ./apps/web:/app
+      - ./docker/web-entrypoint.sh:/usr/local/bin/orbit-web-entrypoint:ro
+      - orbit-web-node-modules:/app/node_modules
+      - orbit-web-next:/app/.next
     ports:
       - "${WEB_PORT:-3000}:3000"
     healthcheck:
@@ -99,8 +113,11 @@ services:
       interval: 15s
       timeout: 5s
       retries: 10
-      start_period: 40s
+      # Covers the in-container `next build` on each start.
+      start_period: 300s
 
 volumes:
   orbit-db-data:
   orbit-files:
+  orbit-web-node-modules:
+  orbit-web-next:

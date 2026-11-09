@@ -24,6 +24,42 @@ class MilestoneOut(ORMModel):
     progress: int
 
 
+class ModuleIn(BaseModel):
+    name: str = Field(min_length=1, max_length=200)
+    description: str | None = None
+    status: str = "active"
+    color: str = "#6366f1"
+
+
+class ModuleUpdate(BaseModel):
+    name: str | None = Field(default=None, min_length=1, max_length=200)
+    description: str | None = None
+    status: str | None = None
+    color: str | None = None
+
+
+class ModuleMemberIn(BaseModel):
+    user_id: uuid.UUID
+    role: str = "developer"
+
+
+class ModuleMemberOut(BaseModel):
+    id: uuid.UUID
+    role: str
+    user: UserRef
+
+
+class ModuleOut(BaseModel):
+    id: uuid.UUID
+    project_id: uuid.UUID
+    name: str
+    description: str | None = None
+    status: str
+    color: str
+    order_index: int = 0
+    members: list[ModuleMemberOut] = []
+
+
 class ProjectMemberIn(BaseModel):
     user_id: uuid.UUID
     role: str = "member"
@@ -103,6 +139,7 @@ class ProjectOut(ORMModel):
     updated_at: datetime
     members: list[ProjectMemberOut] = []
     milestones: list[MilestoneOut] = []
+    modules: list[ModuleOut] = []
     stats: ProjectStats | None = None
 
 

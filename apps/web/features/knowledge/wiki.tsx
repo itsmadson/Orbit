@@ -12,7 +12,7 @@ import { useSession } from "@/components/providers";
 import type { Doc } from "@/lib/types";
 import { PageHeader, Section } from "@/components/shared/page";
 import { Column, DataTable, FilterChips, SearchInput, Toolbar } from "@/components/shared/data";
-import { Attachments, Comments, DetailRow, LoadingPanel, RelatedPanel } from "@/components/shared/entity";
+import { Attachments, Comments, DeleteButton, DetailRow, LoadingPanel, RelatedPanel } from "@/components/shared/entity";
 import { Avatar, Badge, EmptyState, Skeleton, StatusBadge, Tabs, TabsContent, TabsList, TabsTrigger, TimeAgo } from "@/components/ui/misc";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogFooter, DialogHeader } from "@/components/ui/dialog";
@@ -466,9 +466,17 @@ export function DocumentDetail({ documentId }: { documentId: string }) {
                 </Button>
               </>
             ) : (
-              <Button variant="secondary" onClick={() => setEditing(true)}>
-                {t("action.edit")}
-              </Button>
+              <>
+                <Button variant="secondary" onClick={() => setEditing(true)}>
+                  {t("action.edit")}
+                </Button>
+                <DeleteButton
+                  path={`/documents/${documentId}`}
+                  name={doc.title}
+                  redirect="/wiki"
+                  invalidate={["/documents"]}
+                />
+              </>
             )
           ) : null
         }

@@ -23,6 +23,9 @@ DEFAULT_TASK_STATUSES = [
 ]
 TASK_TYPES = ["task", "bug", "feature", "story", "epic", "subtask"]
 PRIORITIES = ["low", "medium", "high", "urgent"]
+MODULE_STATUSES = ["planned", "active", "on_hold", "completed"]
+#: What someone does inside one module of a project.
+MODULE_ROLES = ["developer", "lead", "tester", "designer", "reviewer"]
 
 
 class Project(OrbitBase, SoftDeleteMixin):
@@ -58,6 +61,10 @@ class Project(OrbitBase, SoftDeleteMixin):
     milestones: Mapped[list["Milestone"]] = relationship(
         back_populates="project", cascade="all, delete-orphan"
     )
+    modules: Mapped[list["ProjectModule"]] = relationship(
+        back_populates="project", cascade="all, delete-orphan",
+        order_by="ProjectModule.order_index",
+    )
 
 
 class ProjectMember(OrbitBase):
@@ -88,6 +95,41 @@ class Milestone(OrbitBase):
     progress: Mapped[int] = mapped_column(Integer, default=0)
 
     project: Mapped[Project] = relationship(back_populates="milestones")
+
+
+class ProjectModule(OrbitBase):
+    """A sub-module of a project — a component, service or area of the product."""
+
+    __tablename__ = "project_modules"
+
+    project_id: Mapped[uuid.UUID] = mapped_column(
+        PGUUID(as_uuid=True), ForeignKey("projects.id", ondelete="CASCADE"), index=True
+    )
+    name: Mapped[str] = mapped_column(String(200), nullable=False)
+    description: Mapped[str | None] = mapped_column(Text)
+    status: Mapped[str] = mapped_column(String(24), default="active")
+    color: Mapped[str] = mapped_column(String(16), default="#6366f1")
+    order_index: Mapped[int] = mapped_column(Integer, default=0)
+
+    project: Mapped[Project] = relationship(back_populates="modules")
+    members: Mapped[list["ModuleMember"]] = relationship(
+        back_populates="module", cascade="all, delete-orphan"
+    )
+
+
+class ModuleMember(OrbitBase):
+    __tablename__ = "module_members"
+    __table_args__ = (UniqueConstraint("module_id", "user_id", name="uq_module_member"),)
+
+    module_id: Mapped[uuid.UUID] = mapped_column(
+        PGUUID(as_uuid=True), ForeignKey("project_modules.id", ondelete="CASCADE"), index=True
+    )
+    user_id: Mapped[uuid.UUID] = mapped_column(
+        PGUUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), index=True
+    )
+    role: Mapped[str] = mapped_column(String(40), default="developer")
+
+    module: Mapped[ProjectModule] = relationship(back_populates="members")
 
 
 class Sprint(OrbitBase):

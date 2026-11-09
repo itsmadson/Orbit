@@ -13,7 +13,7 @@ import { useItem } from "@/lib/hooks";
 import { useSession } from "@/components/providers";
 import type { Letter } from "@/lib/types";
 import { PageHeader, Section } from "@/components/shared/page";
-import { Comments, DetailRow, LoadingPanel, RelatedPanel } from "@/components/shared/entity";
+import { Comments, DeleteButton, DetailRow, LoadingPanel, RelatedPanel } from "@/components/shared/entity";
 import { Badge, StatusBadge } from "@/components/ui/misc";
 import { Button } from "@/components/ui/button";
 import { formatDate } from "@/lib/utils";
@@ -159,6 +159,14 @@ export function LetterDetail({ letterId }: { letterId: string }) {
                 <Archive className="h-3.5 w-3.5" />
                 {t("letters.archive")}
               </Button>
+            ) : null}
+            {writable && (!data.number || data.status === "draft" || data.status === "void") ? (
+              <DeleteButton
+                path={`/letters/${letterId}`}
+                name={data.subject}
+                redirect="/letters"
+                invalidate={["/letters"]}
+              />
             ) : null}
           </div>
         }

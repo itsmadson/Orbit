@@ -12,7 +12,7 @@ import { useItem } from "@/lib/hooks";
 import { useSession } from "@/components/providers";
 import type { Idea } from "@/lib/types";
 import { PageHeader, Section } from "@/components/shared/page";
-import { Comments, DetailRow, LoadingPanel, RelatedPanel } from "@/components/shared/entity";
+import { Comments, DeleteButton, DetailRow, LoadingPanel, RelatedPanel } from "@/components/shared/entity";
 import { Avatar, Badge, Progress, StatusBadge } from "@/components/ui/misc";
 import { Button } from "@/components/ui/button";
 import { SimpleSelect } from "@/components/ui/select";
@@ -106,6 +106,12 @@ export function IdeaDetail({ ideaId }: { ideaId: string }) {
                   <FlaskConical className="h-3.5 w-3.5" />
                   {t("ideas.convertToResearch")}
                 </Button>
+                <DeleteButton
+                  path={`/ideas/${ideaId}`}
+                  name={idea.title}
+                  redirect="/ideas"
+                  invalidate={["/ideas"]}
+                />
               </>
             ) : null}
           </>

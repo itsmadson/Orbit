@@ -11,7 +11,7 @@ import { useSession } from "@/components/providers";
 import type { Decision } from "@/lib/types";
 import { PageHeader, Section } from "@/components/shared/page";
 import { FilterChips, SearchInput, Toolbar } from "@/components/shared/data";
-import { Comments, DetailRow, LoadingPanel, RelatedPanel } from "@/components/shared/entity";
+import { Comments, DeleteButton, DetailRow, LoadingPanel, RelatedPanel } from "@/components/shared/entity";
 import { Avatar, Badge, EmptyState, Skeleton, StatusBadge, TimeAgo } from "@/components/ui/misc";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogFooter, DialogHeader } from "@/components/ui/dialog";
@@ -353,16 +353,24 @@ export function DecisionDetail({ decisionId }: { decisionId: string }) {
         }
         actions={
           can("decisions.write") ? (
-            <SimpleSelect
-              value={decision.status}
-              onValueChange={async (status) => {
-                await api.patch(`/decisions/${decisionId}`, { status });
-                client.invalidateQueries({ queryKey: [`/decisions/${decisionId}`] });
-                client.invalidateQueries({ queryKey: ["/decisions"] });
-              }}
-              className="w-36"
-              options={STATUSES.map((value) => ({ value, label: humanize(value) }))}
-            />
+            <>
+              <SimpleSelect
+                value={decision.status}
+                onValueChange={async (status) => {
+                  await api.patch(`/decisions/${decisionId}`, { status });
+                  client.invalidateQueries({ queryKey: [`/decisions/${decisionId}`] });
+                  client.invalidateQueries({ queryKey: ["/decisions"] });
+                }}
+                className="w-36"
+                options={STATUSES.map((value) => ({ value, label: humanize(value) }))}
+              />
+              <DeleteButton
+                path={`/decisions/${decisionId}`}
+                name={decision.title}
+                redirect="/decisions"
+                invalidate={["/decisions"]}
+              />
+            </>
           ) : (
             <StatusBadge status={decision.status} />
           )

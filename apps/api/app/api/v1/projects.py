@@ -15,11 +15,14 @@ from app.models.identity import User
 from app.models.knowledge import Decision, Document
 from app.models.ops import Meeting
 from app.models.system import AuditLog
-from app.models.work import Milestone, Project, ProjectCheckin, ProjectMember, Task
+from app.models.work import (
+    MODULE_ROLES, MODULE_STATUSES, Milestone, ModuleMember, Project, ProjectCheckin,
+    ProjectMember, ProjectModule, Task,
+)
 from app.schemas.common import ActivityOut, Message
 from app.schemas.work import (
-    CheckinIn, MilestoneIn, MilestoneOut, ProjectIn, ProjectMemberIn, ProjectOut,
-    ProjectUpdate,
+    CheckinIn, MilestoneIn, MilestoneOut, ModuleIn, ModuleMemberIn, ModuleOut, ModuleUpdate,
+    ProjectIn, ProjectMemberIn, ProjectOut, ProjectUpdate,
 )
 from app.services import audit, graph, notifications
 from app.services import task_status
@@ -68,6 +71,24 @@ def project_stats(db, project: Project) -> dict:
     }
 
 
+def serialize_module(db, module: ProjectModule) -> dict:
+    members = []
+    for m in module.members:
+        member_user = db.get(User, m.user_id)
+        if member_user is not None:
+            members.append({"id": m.id, "role": m.role, "user": user_ref(member_user)})
+    return {
+        "id": module.id,
+        "project_id": module.project_id,
+        "name": module.name,
+        "description": module.description,
+        "status": module.status,
+        "color": module.color,
+        "order_index": module.order_index,
+        "members": members,
+    }
+
+
 def serialize(db, project: Project, with_stats: bool = True) -> dict:
     return {
         "id": project.id,
@@ -94,6 +115,7 @@ def serialize(db, project: Project, with_stats: bool = True) -> dict:
         ],
         "milestones": [MilestoneOut.model_validate(m).model_dump() for m in
                        sorted(project.milestones, key=lambda m: (m.due_date or date.max))],
+        "modules": [serialize_module(db, m) for m in project.modules],
         "stats": project_stats(db, project) if with_stats else None,
     }
 
@@ -291,7 +313,13 @@ def update_project(
     before = {k: getattr(project, k) for k in changes}
     for field, value in changes.items():
         setattr(project, field, value)
+    # A lead who is not on the project's own member list would be invisible on it.
+    if changes.get("lead_id") and not db.scalar(select(ProjectMember).where(
+            ProjectMember.project_id == project.id, ProjectMember.user_id == changes["lead_id"])):
+        get_or_404(db, User, changes["lead_id"], user.company_id, "User")
+        db.add(ProjectMember(project_id=project.id, user_id=changes["lead_id"], role="lead"))
     db.flush()
+    db.refresh(project)
     diff = audit.diff(before, changes)
     if diff:
         audit.record(db, actor=user, action="status_changed" if "status" in diff else "updated",
@@ -311,10 +339,21 @@ def update_project(
 @router.delete("/{project_id}", response_model=Message)
 def delete_project(project_id: uuid.UUID, db: DbSession,
                    user: Annotated[User, Depends(require("projects.manage"))]):
+    """Delete a project and the tasks inside it.
+
+    Tasks are soft-deleted with it: left behind they would point at a project no
+    one can open, and still count on every board and dashboard. Documents,
+    meetings and spend outlive the project — they are company record.
+    """
     project = get_or_404(db, Project, project_id, user.company_id, "Project")
-    project.deleted_at = datetime.now(UTC)
+    now = datetime.now(UTC)
+    project.deleted_at = now
+    tasks = db.scalars(select(Task).where(
+        Task.project_id == project.id, Task.deleted_at.is_(None))).all()
+    for task in tasks:
+        task.deleted_at = now
     audit.record(db, actor=user, action="deleted", entity_type="project", entity_id=project.id,
-                 summary=f"Deleted project {project.name}")
+                 summary=f"Deleted project {project.name} and {len(tasks)} tasks")
     return Message(message="Project deleted")
 
 
@@ -352,10 +391,153 @@ def remove_member(
     member = db.scalar(select(ProjectMember).where(
         ProjectMember.project_id == project.id, ProjectMember.user_id == user_id))
     if member:
+        if project.lead_id == user_id:
+            raise BadRequest("Choose another lead before removing this one")
         db.delete(member)
+        # Off the project means off every module of it.
+        for module in project.modules:
+            for module_member in list(module.members):
+                if module_member.user_id == user_id:
+                    module.members.remove(module_member)
+        removed = db.get(User, user_id)
+        audit.record(db, actor=user, action="updated", entity_type="project",
+                     entity_id=project.id,
+                     summary=f"Removed {removed.full_name if removed else 'a member'} "
+                             f"from {project.name}")
     db.flush()
     db.refresh(project)
     return serialize(db, project)
+
+
+# ── Modules ──────────────────────────────────────────────────────────────────
+# A project is split into sub-modules, each with its own developers.
+
+def _get_module(db, project: Project, module_id: uuid.UUID) -> ProjectModule:
+    module = db.get(ProjectModule, module_id)
+    if module is None or module.project_id != project.id:
+        raise NotFound("Module")
+    return module
+
+
+def _check_module_status(status: str | None) -> None:
+    if status is not None and status not in MODULE_STATUSES:
+        raise BadRequest(f"Unknown module status: {status}")
+
+
+@router.get("/{project_id}/modules", response_model=list[ModuleOut])
+def list_modules(project_id: uuid.UUID, db: DbSession,
+                 user: Annotated[User, Depends(require("projects.read"))]):
+    project = get_or_404(db, Project, project_id, user.company_id, "Project")
+    return [serialize_module(db, m) for m in project.modules]
+
+
+@router.post("/{project_id}/modules", response_model=ModuleOut, status_code=201)
+def create_module(
+    project_id: uuid.UUID, payload: ModuleIn, db: DbSession,
+    user: Annotated[User, Depends(require("projects.write"))],
+):
+    project = get_or_404(db, Project, project_id, user.company_id, "Project")
+    _check_module_status(payload.status)
+    order = db.scalar(select(func.max(ProjectModule.order_index)).where(
+        ProjectModule.project_id == project.id))
+    module = ProjectModule(project_id=project.id, order_index=(order or 0) + 1,
+                           **payload.model_dump())
+    db.add(module)
+    db.flush()
+    audit.record(db, actor=user, action="created", entity_type="project", entity_id=project.id,
+                 summary=f"Added module {module.name}")
+    db.refresh(module)
+    return serialize_module(db, module)
+
+
+@router.patch("/{project_id}/modules/{module_id}", response_model=ModuleOut)
+def update_module(
+    project_id: uuid.UUID, module_id: uuid.UUID, payload: ModuleUpdate, db: DbSession,
+    user: Annotated[User, Depends(require("projects.write"))],
+):
+    project = get_or_404(db, Project, project_id, user.company_id, "Project")
+    module = _get_module(db, project, module_id)
+    changes = payload.model_dump(exclude_unset=True)
+    if changes.get("name") is None:
+        changes.pop("name", None)
+    _check_module_status(changes.get("status"))
+    for field, value in changes.items():
+        setattr(module, field, value)
+    db.flush()
+    return serialize_module(db, module)
+
+
+@router.delete("/{project_id}/modules/{module_id}", response_model=Message)
+def delete_module(
+    project_id: uuid.UUID, module_id: uuid.UUID, db: DbSession,
+    user: Annotated[User, Depends(require("projects.write"))],
+):
+    project = get_or_404(db, Project, project_id, user.company_id, "Project")
+    module = _get_module(db, project, module_id)
+    db.delete(module)
+    audit.record(db, actor=user, action="deleted", entity_type="project", entity_id=project.id,
+                 summary=f"Removed module {module.name}")
+    return Message(message="Module removed")
+
+
+@router.post("/{project_id}/modules/{module_id}/members", response_model=ModuleOut)
+def add_module_member(
+    project_id: uuid.UUID, module_id: uuid.UUID, payload: ModuleMemberIn, db: DbSession,
+    user: Annotated[User, Depends(require("projects.write"))],
+):
+    """Assign a user to a module — as a developer unless told otherwise.
+
+    Someone working on a module is working on the project, so they join the
+    project's member list too if they are not on it yet.
+    """
+    project = get_or_404(db, Project, project_id, user.company_id, "Project")
+    module = _get_module(db, project, module_id)
+    if payload.role not in MODULE_ROLES:
+        raise BadRequest(f"Unknown module role: {payload.role}")
+    member = get_or_404(db, User, payload.user_id, user.company_id, "User")
+    existing = db.scalar(select(ModuleMember).where(
+        ModuleMember.module_id == module.id, ModuleMember.user_id == member.id))
+    if existing:
+        existing.role = payload.role
+    else:
+        db.add(ModuleMember(module_id=module.id, user_id=member.id, role=payload.role))
+        if not db.scalar(select(ProjectMember).where(
+                ProjectMember.project_id == project.id, ProjectMember.user_id == member.id)):
+            db.add(ProjectMember(project_id=project.id, user_id=member.id, role="developer"))
+            graph.link(db, company_id=user.company_id, from_type="project", from_id=project.id,
+                       rel_type="assigned_to", to_type="user", to_id=member.id, actor=user)
+        notifications.notify(
+            db, user_id=member.id, company_id=user.company_id, type="project_update",
+            title=f"Added to {module.name} in {project.name} as {payload.role}",
+            entity_type="project", entity_id=project.id, url=f"/projects/{project.id}",
+            actor_id=user.id,
+        )
+    audit.record(db, actor=user, action="assigned", entity_type="project", entity_id=project.id,
+                 summary=f"{member.full_name} is {payload.role} on module {module.name}")
+    db.flush()
+    db.refresh(module)
+    return serialize_module(db, module)
+
+
+@router.delete("/{project_id}/modules/{module_id}/members/{user_id}", response_model=ModuleOut)
+def remove_module_member(
+    project_id: uuid.UUID, module_id: uuid.UUID, user_id: uuid.UUID, db: DbSession,
+    user: Annotated[User, Depends(require("projects.write"))],
+):
+    project = get_or_404(db, Project, project_id, user.company_id, "Project")
+    module = _get_module(db, project, module_id)
+    member = db.scalar(select(ModuleMember).where(
+        ModuleMember.module_id == module.id, ModuleMember.user_id == user_id))
+    if member:
+        db.delete(member)
+        removed = db.get(User, user_id)
+        audit.record(db, actor=user, action="updated", entity_type="project",
+                     entity_id=project.id,
+                     summary=f"Removed {removed.full_name if removed else 'a member'} "
+                             f"from module {module.name}")
+    db.flush()
+    db.refresh(module)
+    return serialize_module(db, module)
 
 
 @router.post("/{project_id}/milestones", response_model=MilestoneOut, status_code=201)
@@ -377,11 +559,13 @@ def update_milestone(
     project_id: uuid.UUID, milestone_id: uuid.UUID, payload: MilestoneIn, db: DbSession,
     user: Annotated[User, Depends(require("projects.write"))],
 ):
+    project = get_or_404(db, Project, project_id, user.company_id, "Project")
     milestone = db.get(Milestone, milestone_id)
-    if milestone is None or milestone.project_id != project_id:
+    if milestone is None or milestone.project_id != project.id:
         raise NotFound("Milestone")
     for field, value in payload.model_dump(exclude_unset=True).items():
         setattr(milestone, field, value)
+    db.flush()
     return MilestoneOut.model_validate(milestone)
 
 
@@ -390,9 +574,12 @@ def delete_milestone(
     project_id: uuid.UUID, milestone_id: uuid.UUID, db: DbSession,
     user: Annotated[User, Depends(require("projects.write"))],
 ):
+    project = get_or_404(db, Project, project_id, user.company_id, "Project")
     milestone = db.get(Milestone, milestone_id)
-    if milestone and milestone.project_id == project_id:
+    if milestone and milestone.project_id == project.id:
         db.delete(milestone)
+        audit.record(db, actor=user, action="deleted", entity_type="project",
+                     entity_id=project.id, summary=f"Removed milestone {milestone.name}")
     return Message(message="Milestone removed")
 
 
